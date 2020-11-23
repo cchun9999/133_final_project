@@ -142,6 +142,10 @@ def etip(p, pd, R, Rd):
 #  desired translational and angular velocities for a given time.
 #
 def desired(t, spline_z, spline_x=None, spline_y=None):
+    # spline_x, spline_y are made to be optional because
+    # they are only used in the forward pass. 
+    # TODO: Clean this up.
+    
     # The point is simply taken from the subscriber.
     pd = np.array([[0], [0.90], [0.6]])
     pd[2] = call_spline_pos(spline_z, t)
@@ -166,6 +170,9 @@ def desired(t, spline_z, spline_x=None, spline_y=None):
 
 
 def compute_spline(tf, control_points):
+    # Calculate the coefficients of the desired
+    # spline.
+
     # Control points is array of [p0, v0, pf, vf]
     Y = np.array([[1, 0, 0, 0], 
                  [0, 1, 0, 0],
@@ -176,10 +183,13 @@ def compute_spline(tf, control_points):
     return spline
 
 def call_spline_pos(spline, t):
-    print(spline)
+    # Return the position for the given spline at
+    # the given time
     return spline.T @ np.array([1, t, t**2, t**3])
 
 def call_spline_vel(spline, t):
+    # Return the velocity for the given spline at
+    # the given time
     return spline.T @ np.array([0, 1, 2*t, 3*t**2])
 
 #
@@ -241,10 +251,11 @@ if __name__ == "__main__":
     wd = wd * 0.0
     pd = np.array([[0], [0.90], [0.6]])
 
+    # Get a model state service proxy to be able to query state of the ball
     model_state = rospy.ServiceProxy('/gazebo/get_model_state', GetModelState)
-    link_state = rospy.ServiceProxy('/gazebo/get_link_state', GetLinkState)
-    physics = rospy.ServiceProxy('/gazebo/get_physics_properties', GetPhysicsProperties)
 
+    # Get the gravity constant from gazebo
+    physics = rospy.ServiceProxy('/gazebo/get_physics_properties', GetPhysicsProperties)
     grav = physics().gravity.z
 
 
@@ -266,26 +277,26 @@ if __name__ == "__main__":
         # Get information on the state of the ball. Use this to compute the
         # time it will take the ball to reach the z = 0.6 point so that we can
         # plan the trajectory of the robot to hit it at the right time.
-        ball_coords = model_state("ball", "link")
-        print('Status.success = ', ball_coords.success)
-        print('ball z velocity:', ball_coords.twist.linear.z)
+        ball_state = model_state("ball", "link")
 
-        ball_vz = ball_coords.twist.linear.z
-        ball_z = ball_coords.pose.position.z
+        ball_vz = ball_state.twist.linear.z
+        ball_z = ball_state.pose.position.z
 
         tf_ball = max(np.roots(np.array([1/2*grav, ball_vz, ball_z - 0.6])))
         if not np.isreal(tf_ball):
+            # default to tf if failed to find a root
             tf_ball = tf
-        spline_z = compute_spline(tf_ball/2, np.array([[0.6], [0], [0.4], [0]]))
 
         # Compute the projected final x, y positions of the ball
-        ball_xf = ball_coords.pose.position.x + ball_coords.twist.linear.x * tf_ball
+        ball_xf = ball_state.pose.position.x + ball_state.twist.linear.x * tf_ball 
+        ball_yf = ball_state.pose.position.y + ball_state.twist.linear.y * tf_ball
+
+        # Compute the desired splines for each dimension of the paddle tip.
+        # Use the initial tip position of p0 = [0, 0.9, 0.6].
+        # z is forced to go between 0.6 and 0.3
         spline_x = compute_spline(tf_ball/2, np.array([[0], [0], [ball_xf], [0]]))
-
-        ball_yf = ball_coords.pose.position.y + ball_coords.twist.linear.y * tf_ball
-
-        print("Projected ball xf, yf:", ball_xf, ball_yf)
         spline_y = compute_spline(tf_ball/2, np.array([[0.9], [0], [ball_yf], [0]]))
+        spline_z = compute_spline(tf_ball/2, np.array([[0.6], [0], [0.4], [0]]))
 
         
         # Forward pass: Move Z of tip from 0.6 to 0.3 in the desired amount of time.
@@ -293,10 +304,7 @@ if __name__ == "__main__":
             print(t)
 
             (p, R) = kin.fkin(theta)
-
-            print("Position",  p)
             J      = kin.Jac(theta)
-            # print(p)
 
             (pd, Rd, vd, wd) = desired(t, spline_z, spline_x, spline_y)
             # Determine the residual error.
@@ -333,6 +341,7 @@ if __name__ == "__main__":
             servo.sleep()
 
         # Backward pass: Move Z of tip from 0.6 to 0.3 in the desired amount of time.
+        # For now, I just "reversed" time to simulate reverse trajectory.
         for t in np.arange(tf_ball/2, 0, -dt):
             print("Backward pass")
             (p, R) = kin.fkin(theta)
@@ -372,9 +381,3 @@ if __name__ == "__main__":
             # if not t<0:
             pub.send(theta)
             servo.sleep()
-
-        
-
-        # Break the loop when we are finished.
-        # if (t >= tf):
-        #     break
