@@ -3,6 +3,7 @@
 
   <!-- URDF parameter. -->
   <arg name="model" default="$(find gazebodemos)/urdf/seveneffort.urdf"/>
+  <arg name="model_sdf" default="$(find gazebodemos)/models/seveneffort.sdf"/>
 
   <!-- The control parameters, stored in the YAML file.  -->
   <arg name="control_parameters"
@@ -20,6 +21,7 @@
 
   <!-- Load the URDF into the ROS Parameter Server -->
   <param name="robot_description" textfile="$(arg model)"/>
+  <param name="robot_description_sdf" textfile="$(arg model_sdf)"/>
 
   <!-- Load the controller parameters -->
   <rosparam command="load" file="$(arg control_parameters)"/>
@@ -42,7 +44,7 @@
 	name="robot_spawner"
 	respawn="false"
 	output="screen"
-	args="-urdf -model sevenbot -param robot_description"/>
+	args="-sdf -model sevenbot -param robot_description_sdf"/>
 
   <!-- Service call to gazebo_ros to spawn a beer can model -->
 <!--   <node pkg="gazebo_ros"

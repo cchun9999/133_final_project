@@ -1,0 +1,684 @@
+<sdf version='1.7'>
+  <model name='sevenbot'>
+    <joint name='attach-motor1' type='fixed'>
+      <pose relative_to='__model__'>0 0 0 0 -0 0</pose>
+      <parent>world</parent>
+      <child>motor1</child>
+    </joint>
+    <link name='motor1'>
+      <pose relative_to='attach-motor1'>0 0 0 0 -0 0</pose>
+      <inertial>
+        <pose>0 0 0.3 0 -0 0</pose>
+        <mass>2</mass>
+        <inertia>
+          <ixx>0.007917</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>0.007917</iyy>
+          <iyz>0</iyz>
+          <izz>0.0025</izz>
+        </inertia>
+      </inertial>
+      <visual name='motor1_visual'>
+        <pose>0 0 0.3 0 -0 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.2</length>
+            <radius>0.05</radius>
+          </cylinder>
+        </geometry>
+        <material>
+          <script>
+            <name>Gazebo/Gray</name>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+          </script>
+        </material>
+      </visual>
+      <gravity>1</gravity>
+      <velocity_decay/>
+    </link>
+    <joint name='attach-mount1' type='fixed'>
+      <pose relative_to='__model__'>0 0 0 0 -0 0</pose>
+      <parent>world</parent>
+      <child>mount1</child>
+    </joint>
+    <link name='mount1'>
+      <pose relative_to='attach-mount1'>0 0 0 0 -0 0</pose>
+      <inertial>
+        <pose>0 0 0.1 0 -0 0</pose>
+        <mass>0.2</mass>
+        <inertia>
+          <ixx>0.000687</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>0.000687</iyy>
+          <iyz>0</iyz>
+          <izz>4e-05</izz>
+        </inertia>
+      </inertial>
+      <visual name='mount1_visual'>
+        <pose>0 0 0.1 0 -0 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.2</length>
+            <radius>0.02</radius>
+          </cylinder>
+        </geometry>
+        <material>
+          <script>
+            <name>Gazebo/Black</name>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+          </script>
+        </material>
+      </visual>
+      <gravity>1</gravity>
+      <velocity_decay/>
+    </link>
+    <joint name='theta1' type='revolute'>
+      <pose relative_to='__model__'>0 0 0.6 0 -0 0</pose>
+      <parent>world</parent>
+      <child>link1</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <lower>-1e+16</lower>
+          <upper>1e+16</upper>
+        </limit>
+        <dynamics>
+          <damping>0.5</damping>
+          <friction>0</friction>
+          <spring_reference>0</spring_reference>
+          <spring_stiffness>0</spring_stiffness>
+        </dynamics>
+      </axis>
+    </joint>
+    <link name='link1'>
+      <pose relative_to='theta1'>0 0 0 0 -0 0</pose>
+      <inertial>
+        <pose>0 0 -0.009091 0 -0 0</pose>
+        <mass>2.2</mass>
+        <inertia>
+          <ixx>0.00500518</ixx>
+          <ixy>0</ixy>
+          <ixz>-3.31696e-19</ixz>
+          <iyy>0.0104222</iyy>
+          <iyz>0</iyz>
+          <izz>0.007957</izz>
+        </inertia>
+      </inertial>
+      <visual name='link1_fixed_joint_lump__motor2_visual'>
+        <pose>0 0 0 0 1.5708 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.2</length>
+            <radius>0.05</radius>
+          </cylinder>
+        </geometry>
+        <material>
+          <script>
+            <name>Gazebo/Gray</name>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+          </script>
+        </material>
+      </visual>
+      <visual name='link1_fixed_joint_lump__mount2_visual_1'>
+        <pose>0 0 -0.1 0 -0 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.2</length>
+            <radius>0.02</radius>
+          </cylinder>
+        </geometry>
+        <material>
+          <script>
+            <name>Gazebo/Black</name>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+          </script>
+        </material>
+      </visual>
+      <velocity_decay/>
+      <gravity>1</gravity>
+      <velocity_decay/>
+    </link>
+    <joint name='theta2' type='revolute'>
+      <pose relative_to='link1'>0 0 0 0 -0 0</pose>
+      <parent>link1</parent>
+      <child>link2</child>
+      <axis>
+        <xyz>1 0 0</xyz>
+        <limit>
+          <lower>-1e+16</lower>
+          <upper>1e+16</upper>
+        </limit>
+        <dynamics>
+          <damping>1</damping>
+          <friction>0</friction>
+          <spring_reference>0</spring_reference>
+          <spring_stiffness>0</spring_stiffness>
+        </dynamics>
+      </axis>
+    </joint>
+    <link name='link2'>
+      <pose relative_to='theta2'>0 0 0 0 -0 0</pose>
+      <inertial>
+        <pose>0 0.190909 0 0 -0 0</pose>
+        <mass>2.2</mass>
+        <inertia>
+          <ixx>0.0104222</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>0.00254</iyy>
+          <iyz>-2.22743e-08</iyz>
+          <izz>0.0104222</izz>
+        </inertia>
+      </inertial>
+      <visual name='link2_fixed_joint_lump__motor3_visual'>
+        <pose>0 0.2 0 1.5708 -0 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.2</length>
+            <radius>0.05</radius>
+          </cylinder>
+        </geometry>
+        <material>
+          <script>
+            <name>Gazebo/Gray</name>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+          </script>
+        </material>
+      </visual>
+      <visual name='link2_fixed_joint_lump__mount3_visual_1'>
+        <pose>0 0.1 0 1.5708 -0 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.2</length>
+            <radius>0.02</radius>
+          </cylinder>
+        </geometry>
+        <material>
+          <script>
+            <name>Gazebo/Black</name>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+          </script>
+        </material>
+      </visual>
+      <velocity_decay/>
+      <gravity>1</gravity>
+      <velocity_decay/>
+    </link>
+    <joint name='theta3' type='revolute'>
+      <pose relative_to='link2'>0 0.4 0 0 -0 0</pose>
+      <parent>link2</parent>
+      <child>link3</child>
+      <axis>
+        <xyz>0 1 0</xyz>
+        <limit>
+          <lower>-1e+16</lower>
+          <upper>1e+16</upper>
+        </limit>
+        <dynamics>
+          <damping>0.05</damping>
+          <friction>0</friction>
+          <spring_reference>0</spring_reference>
+          <spring_stiffness>0</spring_stiffness>
+        </dynamics>
+      </axis>
+    </joint>
+    <link name='link3'>
+      <pose relative_to='theta3'>0 0 0 0 -0 0</pose>
+      <inertial>
+        <pose>0 -0.009091 0 0 -0 0</pose>
+        <mass>2.2</mass>
+        <inertia>
+          <ixx>0.00500518</ixx>
+          <ixy>0</ixy>
+          <ixz>-3.31696e-19</ixz>
+          <iyy>0.007957</iyy>
+          <iyz>-2.37656e-09</iyz>
+          <izz>0.0104222</izz>
+        </inertia>
+      </inertial>
+      <visual name='link3_fixed_joint_lump__motor4_visual'>
+        <pose>0 0 0 0 1.5708 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.2</length>
+            <radius>0.05</radius>
+          </cylinder>
+        </geometry>
+        <material>
+          <script>
+            <name>Gazebo/Gray</name>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+          </script>
+        </material>
+      </visual>
+      <visual name='link3_fixed_joint_lump__mount4_visual_1'>
+        <pose>0 -0.1 0 1.5708 -0 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.2</length>
+            <radius>0.02</radius>
+          </cylinder>
+        </geometry>
+        <material>
+          <script>
+            <name>Gazebo/Black</name>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+          </script>
+        </material>
+      </visual>
+      <velocity_decay/>
+      <gravity>1</gravity>
+      <velocity_decay/>
+    </link>
+    <joint name='theta4' type='revolute'>
+      <pose relative_to='link3'>0 0 0 0 -0 0</pose>
+      <parent>link3</parent>
+      <child>link4</child>
+      <axis>
+        <xyz>1 0 0</xyz>
+        <limit>
+          <lower>-1e+16</lower>
+          <upper>1e+16</upper>
+        </limit>
+        <dynamics>
+          <damping>0.1</damping>
+          <friction>0</friction>
+          <spring_reference>0</spring_reference>
+          <spring_stiffness>0</spring_stiffness>
+        </dynamics>
+      </axis>
+    </joint>
+    <link name='link4'>
+      <pose relative_to='theta4'>0 0 0 0 -0 0</pose>
+      <inertial>
+        <pose>0 0.183333 0 0 -0 0</pose>
+        <mass>1.2</mass>
+        <inertia>
+          <ixx>0.00334367</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>0.000353</iyy>
+          <iyz>-4.86332e-09</iyz>
+          <izz>0.00334367</izz>
+        </inertia>
+      </inertial>
+      <visual name='link4_fixed_joint_lump__motor5_visual'>
+        <pose>0 0.2 0 1.5708 -0 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.1</length>
+            <radius>0.025</radius>
+          </cylinder>
+        </geometry>
+        <material>
+          <script>
+            <name>Gazebo/Gray</name>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+          </script>
+        </material>
+      </visual>
+      <visual name='link4_fixed_joint_lump__mount5_visual_1'>
+        <pose>0 0.1 0 1.5708 -0 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.2</length>
+            <radius>0.02</radius>
+          </cylinder>
+        </geometry>
+        <material>
+          <script>
+            <name>Gazebo/Black</name>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+          </script>
+        </material>
+      </visual>
+      <velocity_decay/>
+      <gravity>1</gravity>
+      <velocity_decay/>
+    </link>
+    <joint name='theta5' type='revolute'>
+      <pose relative_to='link4'>0 0.4 0 0 -0 0</pose>
+      <parent>link4</parent>
+      <child>link5</child>
+      <axis>
+        <xyz>0 1 0</xyz>
+        <limit>
+          <lower>-1e+16</lower>
+          <upper>1e+16</upper>
+        </limit>
+        <dynamics>
+          <damping>0.02</damping>
+          <friction>0</friction>
+          <spring_reference>0</spring_reference>
+          <spring_stiffness>0</spring_stiffness>
+        </dynamics>
+      </axis>
+    </joint>
+    <link name='link5'>
+      <pose relative_to='theta5'>0 0 0 0 -0 0</pose>
+      <inertial>
+        <pose>0 -0.009091 0 0 -0 0</pose>
+        <mass>1.1</mass>
+        <inertia>
+          <ixx>0.00223509</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>0.000995</iyy>
+          <iyz>-1.21583e-09</iyz>
+          <izz>0.00155809</izz>
+        </inertia>
+      </inertial>
+      <visual name='link5_fixed_joint_lump__motor6_visual'>
+        <pose>0 0 0 0 -0 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.1</length>
+            <radius>0.025</radius>
+          </cylinder>
+        </geometry>
+        <material>
+          <script>
+            <name>Gazebo/Gray</name>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+          </script>
+        </material>
+      </visual>
+      <visual name='link5_fixed_joint_lump__mount6_visual_1'>
+        <pose>0 -0.1 0 1.5708 -0 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.2</length>
+            <radius>0.01</radius>
+          </cylinder>
+        </geometry>
+        <material>
+          <script>
+            <name>Gazebo/Black</name>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+          </script>
+        </material>
+      </visual>
+      <velocity_decay/>
+      <gravity>1</gravity>
+      <velocity_decay/>
+    </link>
+    <joint name='theta6' type='revolute'>
+      <pose relative_to='link5'>0 0 0 0 -0 0</pose>
+      <parent>link5</parent>
+      <child>link6</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <lower>-1e+16</lower>
+          <upper>1e+16</upper>
+        </limit>
+        <dynamics>
+          <damping>0.02</damping>
+          <friction>0</friction>
+          <spring_reference>0</spring_reference>
+          <spring_stiffness>0</spring_stiffness>
+        </dynamics>
+      </axis>
+    </joint>
+    <link name='link6'>
+      <pose relative_to='theta6'>0 0 0 0 -0 0</pose>
+      <inertial>
+        <pose>0 0 0 0 -0 0</pose>
+        <mass>1</mass>
+        <inertia>
+          <ixx>0.000313</ixx>
+          <ixy>0</ixy>
+          <ixz>-4.14543e-20</ixz>
+          <iyy>0.00099</iyy>
+          <iyz>0</iyz>
+          <izz>0.00099</izz>
+        </inertia>
+      </inertial>
+      <visual name='link6_fixed_joint_lump__motor7_visual'>
+        <pose>0 0 0 0 1.5708 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.1</length>
+            <radius>0.025</radius>
+          </cylinder>
+        </geometry>
+        <material>
+          <script>
+            <name>Gazebo/Gray</name>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+          </script>
+        </material>
+      </visual>
+      <gravity>1</gravity>
+      <velocity_decay/>
+    </link>
+    <joint name='theta7' type='revolute'>
+      <pose relative_to='link6'>0 0 0 0 -0 0</pose>
+      <parent>link6</parent>
+      <child>link7</child>
+      <axis>
+        <xyz>1 0 0</xyz>
+        <limit>
+          <lower>-1e+16</lower>
+          <upper>1e+16</upper>
+        </limit>
+        <dynamics>
+          <damping>0.02</damping>
+          <friction>0</friction>
+          <spring_reference>0</spring_reference>
+          <spring_stiffness>0</spring_stiffness>
+        </dynamics>
+      </axis>
+    </joint>
+    <link name='link7'>
+      <pose relative_to='theta7'>0 0 0 0 -0 0</pose>
+      <inertial>
+        <pose>-0 0.146136 0 0 -0 0</pose>
+        <mass>2.2</mass>
+        <inertia>
+          <ixx>0.00235816</ixx>
+          <ixy>-6.33749e-20</ixy>
+          <ixz>-2.44929e-21</ixz>
+          <iyy>0.001966</iyy>
+          <iyz>-2.93856e-10</iyz>
+          <izz>0.00264816</izz>
+        </inertia>
+      </inertial>
+      <collision name='link7_fixed_joint_lump__cube_collision'>
+        <pose>0 0.15 0 1.5708 -0 -3.14159</pose>
+        <geometry>
+          <box>
+            <size>0.9 0.1 0.9</size>
+          </box>
+        </geometry>
+        <surface>
+          <bounce>
+            <restitution_coefficient>1</restitution_coefficient>
+            <threshold>0.01</threshold>
+          </bounce>
+          <contact>
+            <ode>
+              <max_vel>10</max_vel>
+            </ode>
+          </contact>
+          <friction>
+            <ode/>
+          </friction>
+        </surface>
+      </collision>
+      <visual name='link7_fixed_joint_lump__handbase_visual'>
+        <pose>0 0.05 0 1.5708 -0 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.1</length>
+            <radius>0.01</radius>
+          </cylinder>
+        </geometry>
+        <material>
+          <script>
+            <name>Gazebo/Black</name>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+          </script>
+        </material>
+      </visual>
+      <visual name='link7_fixed_joint_lump__leftfinger_visual_1'>
+        <pose>-0.05 0.14 0 1.5708 -0 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.08</length>
+            <radius>0.01</radius>
+          </cylinder>
+        </geometry>
+        <material>
+          <script>
+            <name>Gazebo/Black</name>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+          </script>
+        </material>
+      </visual>
+      <visual name='link7_fixed_joint_lump__palm_visual_2'>
+        <pose>0 0.1 0 0 1.5708 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.1</length>
+            <radius>0.01</radius>
+          </cylinder>
+        </geometry>
+        <material>
+          <script>
+            <name>Gazebo/Black</name>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+          </script>
+        </material>
+      </visual>
+      <visual name='link7_fixed_joint_lump__rightfinger_visual_3'>
+        <pose>0.05 0.14 0 1.5708 -0 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.08</length>
+            <radius>0.01</radius>
+          </cylinder>
+        </geometry>
+        <material>
+          <script>
+            <name>Gazebo/Black</name>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+          </script>
+        </material>
+      </visual>
+      <visual name='link7_fixed_joint_lump__cube-back_visual_4'>
+        <pose>0 0.11 0 1.5708 -0 -3.14159</pose>
+        <geometry>
+          <box>
+            <size>0.09 0.09 0.0202</size>
+          </box>
+        </geometry>
+        <material>
+          <script>
+            <name>Gazebo/White</name>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+          </script>
+        </material>
+      </visual>
+      <visual name='link7_fixed_joint_lump__cube-down_visual_5'>
+        <pose>0 0.15 -0.04 1.5708 -0 -3.14159</pose>
+        <geometry>
+          <box>
+            <size>0.09 0.0202 0.09</size>
+          </box>
+        </geometry>
+        <material>
+          <script>
+            <name>Gazebo/Yellow</name>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+          </script>
+        </material>
+      </visual>
+      <visual name='link7_fixed_joint_lump__cube-front_visual_6'>
+        <pose>-0 0.19 -0 1.5708 -0 -3.14159</pose>
+        <geometry>
+          <box>
+            <size>0.09 0.09 0.0202</size>
+          </box>
+        </geometry>
+        <material>
+          <script>
+            <name>Gazebo/Blue</name>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+          </script>
+        </material>
+      </visual>
+      <visual name='link7_fixed_joint_lump__cube-left_visual_7'>
+        <pose>-0.04 0.15 0 1.5708 -0 -3.14159</pose>
+        <geometry>
+          <box>
+            <size>0.0202 0.09 0.09</size>
+          </box>
+        </geometry>
+        <material>
+          <script>
+            <name>Gazebo/Red</name>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+          </script>
+        </material>
+      </visual>
+      <visual name='link7_fixed_joint_lump__cube-right_visual_8'>
+        <pose>0.04 0.15 0 1.5708 -0 -3.14159</pose>
+        <geometry>
+          <box>
+            <size>0.0202 0.09 0.09</size>
+          </box>
+        </geometry>
+        <material>
+          <script>
+            <name>Gazebo/Orange</name>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+          </script>
+        </material>
+      </visual>
+      <visual name='link7_fixed_joint_lump__cube-up_visual_9'>
+        <pose>-0 0.15 0.04 1.5708 -0 -3.14159</pose>
+        <geometry>
+          <box>
+            <size>0.9 0.0202 0.9</size>
+          </box>
+        </geometry>
+        <material>
+          <script>
+            <name>Gazebo/Green</name>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+          </script>
+        </material>
+      </visual>
+      <velocity_decay/>
+      <velocity_decay/>
+      <velocity_decay/>
+      <velocity_decay/>
+      <velocity_decay/>
+      <velocity_decay/>
+      <velocity_decay/>
+      <velocity_decay/>
+      <velocity_decay/>
+      <velocity_decay/>
+      <gravity>1</gravity>
+      <velocity_decay/>
+    </link>
+    <static>0</static>
+    <plugin name='gazebo_ros_control' filename='libgazebo_ros_control.so'>
+      <robotNamespace>/sevenbot</robotNamespace>
+      <robotSimType>gazebo_ros_control/DefaultRobotHWSim</robotSimType>
+    </plugin>
+    <transmission name='trans1'>
+      <type>transmission_interface/SimpleTransmission</type>
+      <joint name='theta1'>
+        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+      </joint>
+      <actuator name='motor1'>
+        <mechanicalReduction>1</mechanicalReduction>
+        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+      </actuator>
+    </transmission>
+  </model>
+</sdf>

@@ -634,6 +634,15 @@
       </geometry>
       <surface>
         <bounce restitution_coefficient="1.0" threshold="0.01"/>
+        <!-- <bounce>
+          <restitution_coefficient>1</restitution_coefficient>
+          <threshold>0.01</threshold>
+        </bounce> -->
+        <!-- <contact>
+          <ode>
+            <max_vel>10</max_vel>
+          </ode>
+        </contact> -->
       </surface>
     </collision>
 
@@ -755,7 +764,7 @@
   <gazebo reference="cube-back">  <material>Gazebo/White</material>  </gazebo>
 
   <gazebo reference="cube">
-    <maxVel value="10.0"/>
+    <max_vel value="10.0"/>
   </gazebo>
 
 </robot>
