@@ -1,0 +1,16 @@
+<launch>
+  <!-- Start the point publisher -->
+  <node pkg="gazebodemos"
+  	type="point_publisher.py"
+	name="point_publisher"
+	output="screen">
+  </node>
+
+  <!-- Start the IKIN tracker demo -->
+  <node pkg="gazebodemos"
+  	type="demo_gazebo_ikintracker.py"
+	name="demo_gazebo_ikintracker"
+	output="screen">
+  </node>
+
+</launch>

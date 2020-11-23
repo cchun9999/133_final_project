@@ -1,0 +1,22 @@
+<launch>
+  <!-- You can overwrite these arguments from the commmand line. -->
+
+  <!-- Rviz configuration file parameter. -->
+  <arg name="cfg"   default="$(find gazebodemos)/rviz/view133.rviz" />
+
+
+  <!-- Run the rviz visualization, with the specified config file -->
+  <node pkg="rviz"
+  	type="rviz"
+	name="rviz"
+	args="-d $(arg cfg)"
+	output="screen"/>
+
+  <!-- Start the point publisher -->
+  <node pkg="gazebodemos"
+  	type="point_publisher.py"
+	name="point_publisher"
+	output="screen">
+  </node>
+
+</launch>

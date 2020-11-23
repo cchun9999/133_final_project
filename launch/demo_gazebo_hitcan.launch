@@ -1,0 +1,9 @@
+<launch>
+  <!-- Start the Hit-the-Can demo -->
+  <node pkg="gazebodemos"
+  	type="demo_gazebo_hitcan.py"
+	name="demo_gazebo_hitcan"
+	output="screen">
+  </node>
+
+</launch>

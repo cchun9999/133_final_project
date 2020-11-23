@@ -1,0 +1,55 @@
+<launch>
+  <!-- You can overwrite these arguments from the commmand line. -->
+
+  <!-- URDF parameter. -->
+  <arg name="model" default="$(find gazebodemos)/urdf/seveneffort.urdf"/>
+
+  <!-- These are arguments for Gazebo. -->
+  <arg name="paused"     default="true"/>
+  <!--
+  <arg name="world_name" default="$(find gazebodemos)/worlds/stuff.world"/>
+  <arg name="world_name" default="$(find gazebodemos)/worlds/slowtime.world"/>
+  <arg name="world_name" default="$(find gazebodemos)/worlds/realtime.world"/>
+  -->
+  <arg name="world_name" default="$(find gazebodemos)/worlds/slowtime.world"/>
+
+
+  <!-- Load the URDF into the ROS Parameter Server -->
+  <param name="robot_description" textfile="$(arg model)"/>
+
+
+  <!-- Launch Gazebo with the given world. -->
+  <!-- We use the empty world launch file to set other defaults. -->
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name"   value="$(arg world_name)"/>
+    <arg name="paused"       value="$(arg paused)"/>
+    <arg name="gui"          value="true"/>
+    <arg name="use_sim_time" value="true"/>
+    <arg name="headless"     value="false"/>
+    <arg name="debug"        value="false"/>
+  </include>
+
+  <!-- Service call to gazebo_ros to spawn a URDF robot -->
+  <node pkg="gazebo_ros"
+	type="spawn_model"
+	name="robot_spawner"
+	respawn="false"
+	output="screen"
+	args="-urdf -model sevenbot -param robot_description"/>
+
+  <!-- Service call to gazebo_ros to spawn a beer can model -->
+  <node pkg="gazebo_ros"
+	type="spawn_model"
+	name="beer_spawner"
+	respawn="false"
+	output="screen"
+	args="-sdf -model beercan -database beer -x 0.0 -y 0.5 -z 0"/>
+
+  <!-- Service call to gazebo_ros to spawn a tetherball model -->
+  <node pkg="gazebo_ros"
+	type="spawn_model"
+	name="tehterball_spawner"
+	respawn="false"
+	output="screen"
+	args="-sdf -model tetherball -file $(find gazebodemos)/models/tetherball/model.sdf -x -0.2 -y 0.5 -z 1.2"/>
+</launch>

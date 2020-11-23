@@ -1,0 +1,32 @@
+<launch>
+  <!-- You can overwrite these arguments from the commmand line. -->
+
+  <!-- URDF parameter. -->
+  <arg name="urdf"  default="sixR.urdf"/>
+  <arg name="model" default="$(find hw6code)/urdf/$(arg urdf)"/>
+
+  <!-- Rviz configuration file parameter. -->
+  <arg name="cfg"   default="$(find gazebodemos)/rviz/view133.rviz"/>
+
+
+  <!-- Launch RVIZ and the robot state publisher. -->
+  <include file="$(find hw6code)/launch/rviz.launch">
+    <arg name="model" value="$(arg model)"/>
+    <arg name="cfg"   value="$(arg cfg)"/>
+  </include>
+
+  <!-- Start the point publisher -->
+  <node pkg="gazebodemos"
+  	type="point_publisher.py"
+	name="point_publisher"
+	output="screen">
+  </node>
+
+  <!-- Start the IKIN tracker -->
+  <node pkg="gazebodemos"
+  	type="demoikintrackerplusring.py"
+	name="demoikintrackerplusring"
+	output="screen">
+  </node>
+
+</launch>

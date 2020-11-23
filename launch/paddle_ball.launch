@@ -1,0 +1,9 @@
+<launch>
+  <!-- Start the IKIN tracker demo -->
+  <node pkg="gazebodemos"
+  	type="paddle_ball.py"
+	name="paddle_ball"
+	output="screen">
+  </node>
+
+</launch>
