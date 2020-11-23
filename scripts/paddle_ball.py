@@ -145,7 +145,7 @@ def desired(t, spline_z, spline_x=None, spline_y=None):
     # spline_x, spline_y are made to be optional because
     # they are only used in the forward pass. 
     # TODO: Clean this up.
-    
+
     # The point is simply taken from the subscriber.
     pd = np.array([[0], [0.90], [0.6]])
     pd[2] = call_spline_pos(spline_z, t)
@@ -242,7 +242,7 @@ if __name__ == "__main__":
     # Pick an initial joint position (pretty bad initial guess, but
     # away from the worst singularities).
     #theta = np.zeros((7, 1))
-    theta = np.array([[0.0], [0.0], [0.0], [-0.1], [0.0], [0.0], [0.0]])
+    theta = np.array([[0.0], [0.0], [0.0], [-0.05], [0.0], [0.0], [0.0]])
 
     # For the initial desired, head to the starting position (t=0).
     # Clear the velocities, just to be sure.
@@ -266,10 +266,11 @@ if __name__ == "__main__":
     # to allow the poor initial guess to move to the starting point.
     #
     lam =  0.1/dt
+    num_iters = 0
     while not rospy.is_shutdown():
         # Using the result theta(i-1) of the last cycle (i-1): Compute
         # the fkin(theta(i-1)) and the Jacobian J(theta(i-1)).
-
+        num_iters += 1
         t = 0
         tf = 0.8
         tf_ball = None
@@ -292,17 +293,27 @@ if __name__ == "__main__":
         ball_yf = ball_state.pose.position.y + ball_state.twist.linear.y * tf_ball
 
         # Compute the desired splines for each dimension of the paddle tip.
-        # Use the initial tip position of p0 = [0, 0.9, 0.6].
+        # Use the initial tip position of p0.
         # z is forced to go between 0.6 and 0.3
-        spline_x = compute_spline(tf_ball/2, np.array([[0], [0], [ball_xf], [0]]))
-        spline_y = compute_spline(tf_ball/2, np.array([[0.9], [0], [ball_yf], [0]]))
-        spline_z = compute_spline(tf_ball/2, np.array([[0.6], [0], [0.4], [0]]))
+        if num_iters > 1:
+            p0, _ = kin.fkin(theta)
+        else:
+            p0 = np.array([[0], [0.95], [0.6]])
+        x0, y0, z0 = p0.flatten()
+        print(z0)
+        spline_x = compute_spline(tf_ball/2, np.array([[x0], [0], [ball_xf], [0]]))
+        spline_y = compute_spline(tf_ball/2, np.array([[y0], [0], [ball_yf], [0]]))
+        spline_z = compute_spline(tf_ball/2, np.array([[z0], [0], [0.4], [0]]))
 
         
         # Forward pass: Move Z of tip from 0.6 to 0.3 in the desired amount of time.
         for t in np.arange(0, tf_ball/2, dt):
-            print(t)
+            print("t:",t)
 
+            # TODO: The instability right at the beginning stems from here because the
+            # actual original configuration is in a singularity but we set theta to not
+            # be in one, can fix this with the negative time trick, but then have to 
+            # account for the ball falling at the same time.
             (p, R) = kin.fkin(theta)
             J      = kin.Jac(theta)
 
@@ -340,14 +351,19 @@ if __name__ == "__main__":
             pub.send(theta)
             servo.sleep()
 
+
         # Backward pass: Move Z of tip from 0.6 to 0.3 in the desired amount of time.
         # For now, I just "reversed" time to simulate reverse trajectory.
-        for t in np.arange(tf_ball/2, 0, -dt):
+        for t in np.arange(tf_ball/2, 0 -1e-3, -dt):
             print("Backward pass")
             (p, R) = kin.fkin(theta)
             J      = kin.Jac(theta)
 
             (pd, Rd, vd, wd) = desired(t, spline_z)
+            # Reset the x, y positions to be where the ball will land,
+            # which should be where we're at already
+            pd[0] = ball_xf
+            pd[1] = ball_yf
 
             # Determine the residual error.
             e = etip(p, pd, R, Rd)
