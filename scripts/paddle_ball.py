@@ -192,6 +192,34 @@ def call_spline_vel(spline, t):
     # the given time
     return spline.T @ np.array([0, 1, 2*t, 3*t**2])
 
+def get_paddle_velocity(initial_vel, final_vel, paddle_mass, ball_mass, e):
+    '''
+    Parameters
+    ----------
+    initial_velocity : 3x1 numpy array
+        velocity in the world frame of the ball before the collision
+    final_velocity : 3x1 numpy array
+        velocity in the world frame of the ball after the collision
+    paddel_mass : double
+        Mass of the paddle
+    ball_mass : double
+        Mass of the ball
+    e : double
+        Coefficient of restitution between 0 and 1
+
+    Returns
+    -------
+    3x1 numpy array representing the velocity of the paddle
+    3x1 numpy array unit vector representing the orientation of the z axis
+    '''
+    
+    J = ball_mass * (final_vel - initial_vel)
+    J_norm = np.linalg.norm(J)
+    J_unit = J / J_norm
+    paddle_vel_norm = J_norm * (1/paddle_mass + 1/ball_mass) / (1 + e) + initial_vel.T @ J_unit
+    paddle_vel = paddle_vel_norm * J_unit
+    return paddle_vel, J_unit
+
 #
 #  Main Code
 #
