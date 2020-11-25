@@ -1,10 +1,10 @@
 <?xml version='1.0'?>
 <sdf version='1.7'>
   <model name="sphere">
-    <pose>0 0.55 0 0 0 0</pose>
+    <pose>0 0 0 0 0 0</pose>
     <link name="link">
       <inertial>
-        <mass>.1</mass>
+        <mass>.01</mass>
         <inertia>
           <ixx>0.004</ixx>
           <iyy>0.004</iyy>
@@ -22,7 +22,7 @@
         </geometry>
         <surface>
           <bounce>
-            <restitution_coefficient>0</restitution_coefficient>
+            <restitution_coefficient>1.0</restitution_coefficient>
             <threshold>0.01</threshold>
           </bounce>
           <contact>

@@ -314,7 +314,9 @@ if __name__ == "__main__":
         tf_ball = max(np.roots(np.array([1/2*grav, ball_vz, ball_z - 0.6])))
         if not np.isreal(tf_ball):
             # default to tf if failed to find a root
+            print('failed to find root')
             tf_ball = tf
+        print('projected tf:', tf_ball)
 
         # Compute the projected final x, y positions of the ball
         ball_xf = ball_state.pose.position.x + ball_state.twist.linear.x * tf_ball 
@@ -323,14 +325,16 @@ if __name__ == "__main__":
         # Compute the desired splines for each dimension of the paddle tip.
         # Use the initial tip position of p0.
         # z is forced to go between 0.6 and 0.3
-        if num_iters > 1:
-            p0, _ = kin.fkin(theta)
-        else:
-            p0 = np.array([[0], [0.95], [0.6]])
+        # if num_iters > 1:
+        #     p0, _ = kin.fkin(theta)
+        # else:
+        #     p0 = np.array([[0], [0.95], [0.6]])
+        p0, _ = kin.fkin(theta)
         x0, y0, z0 = p0.flatten()
         print(z0)
         spline_x = compute_spline(tf_ball/2, np.array([[x0], [0], [ball_xf], [0]]))
         spline_y = compute_spline(tf_ball/2, np.array([[y0], [0], [ball_yf], [0]]))
+        
         spline_z = compute_spline(tf_ball/2, np.array([[z0], [0], [0.4], [0]]))
 
         

@@ -495,12 +495,12 @@
         </geometry>
         <surface>
           <bounce>
-            <restitution_coefficient>0</restitution_coefficient>
-            <threshold>20000</threshold>
+            <restitution_coefficient>1</restitution_coefficient>
+            <threshold>0.01</threshold>
           </bounce>
           <contact>
             <ode>
-              <max_vel>.01</max_vel>
+              <max_vel>10</max_vel>
             </ode>
           </contact>
           <friction>
@@ -527,7 +527,7 @@
         <pose>-0.05 0.14 0 1.5708 -0 0</pose>
         <geometry>
           <cylinder>
-            <length>.1</length>
+            <length>0.08</length>
             <radius>0.01</radius>
           </cylinder>
         </geometry>
@@ -557,7 +557,7 @@
         <pose>0.05 0.14 0 1.5708 -0 0</pose>
         <geometry>
           <cylinder>
-            <length>1.5</length>
+            <length>0.08</length>
             <radius>0.01</radius>
           </cylinder>
         </geometry>
@@ -639,7 +639,7 @@
         </material>
       </visual>
       <visual name='link7_fixed_joint_lump__cube-up_visual_9'>
-        <pose>-0 0.15 0.0 1.5708 -0 -3.14159</pose>
+        <pose>-0 0.15 0.04 1.5708 -0 -3.14159</pose>
         <geometry>
           <box>
             <size>0.9 0.0202 0.9</size>
