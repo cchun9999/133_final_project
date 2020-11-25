@@ -1,3 +1,4 @@
+<?xml version='1.0'?>
 <sdf version='1.7'>
   <model name='sevenbot'>
     <joint name='attach-motor1' type='fixed'>
@@ -475,44 +476,44 @@
     <link name='link7'>
       <pose relative_to='theta7'>0 0 0 0 -0 0</pose>
       <inertial>
-        <pose>-0 0.146136 0 0 -0 0</pose>
-        <mass>2.2</mass>
+        <pose>0 0.55 0 0 -0 0</pose>
+        <mass>.2</mass>
         <inertia>
-          <ixx>0.00235816</ixx>
-          <ixy>-6.33749e-20</ixy>
+          <ixx>0.0219918</ixx>
+          <ixy>1.65436e-24</ixy>
           <ixz>-2.44929e-21</ixz>
-          <iyy>0.001966</iyy>
+          <iyy>0.007966</iyy>
           <iyz>-2.93856e-10</iyz>
-          <izz>0.00264816</izz>
+          <izz>0.0282818</izz>
         </inertia>
       </inertial>
       <collision name='link7_fixed_joint_lump__cube_collision'>
-        <pose>0 0.15 0 1.5708 -0 -3.14159</pose>
+        <!-- <pose>0 0.55 0.02 3.14 -0 -3.14159</pose> -->
+        <pose>0 0.55 0 0 -0 0</pose>
+        <!-- <pose>-3e-06 0.55 0.019999 3.1408 -0 -3.14159</pose> -->
         <geometry>
-          <box>
-            <size>0.9 0.1 0.9</size>
-          </box>
+          <cylinder>
+            <length>0.02</length>
+            <radius>0.5</radius>
+          </cylinder>
         </geometry>
         <surface>
           <bounce>
             <restitution_coefficient>0</restitution_coefficient>
-            <threshold>20000</threshold>
+            <threshold>.01</threshold>
           </bounce>
           <contact>
             <ode>
-              <max_vel>.01</max_vel>
+              <max_vel>10</max_vel>
             </ode>
           </contact>
-          <friction>
-            <ode/>
-          </friction>
         </surface>
       </collision>
       <visual name='link7_fixed_joint_lump__handbase_visual'>
         <pose>0 0.05 0 1.5708 -0 0</pose>
         <geometry>
           <cylinder>
-            <length>0.1</length>
+            <length>0.7</length>
             <radius>0.01</radius>
           </cylinder>
         </geometry>
@@ -524,10 +525,10 @@
         </material>
       </visual>
       <visual name='link7_fixed_joint_lump__leftfinger_visual_1'>
-        <pose>-0.05 0.14 0 1.5708 -0 0</pose>
+        <pose>-0.25 0.6 0 1.5708 -0 0</pose>
         <geometry>
           <cylinder>
-            <length>.1</length>
+            <length>0.6</length>
             <radius>0.01</radius>
           </cylinder>
         </geometry>
@@ -539,10 +540,10 @@
         </material>
       </visual>
       <visual name='link7_fixed_joint_lump__palm_visual_2'>
-        <pose>0 0.1 0 0 1.5708 0</pose>
+        <pose>0 0.4 0 0 1.5708 0</pose>
         <geometry>
           <cylinder>
-            <length>0.1</length>
+            <length>0.9</length>
             <radius>0.01</radius>
           </cylinder>
         </geometry>
@@ -554,10 +555,10 @@
         </material>
       </visual>
       <visual name='link7_fixed_joint_lump__rightfinger_visual_3'>
-        <pose>0.05 0.14 0 1.5708 -0 0</pose>
+        <pose>0.25 0.6 0 1.5708 -0 0</pose>
         <geometry>
           <cylinder>
-            <length>1.5</length>
+            <length>0.6</length>
             <radius>0.01</radius>
           </cylinder>
         </geometry>
@@ -568,82 +569,14 @@
           </script>
         </material>
       </visual>
-      <visual name='link7_fixed_joint_lump__cube-back_visual_4'>
-        <pose>0 0.11 0 1.5708 -0 -3.14159</pose>
+      <visual name='link7_fixed_joint_lump__cube_visual_4'>
+        <!-- <pose>-3e-06 0.55 0.019999 3.1408 -0 -3.14159</pose> -->
+        <pose>-3e-06 0.55 0.019999 0 -0 0</pose>
         <geometry>
-          <box>
-            <size>0.09 0.09 0.0202</size>
-          </box>
-        </geometry>
-        <material>
-          <script>
-            <name>Gazebo/White</name>
-            <uri>file://media/materials/scripts/gazebo.material</uri>
-          </script>
-        </material>
-      </visual>
-      <visual name='link7_fixed_joint_lump__cube-down_visual_5'>
-        <pose>0 0.15 -0.04 1.5708 -0 -3.14159</pose>
-        <geometry>
-          <box>
-            <size>0.09 0.0202 0.09</size>
-          </box>
-        </geometry>
-        <material>
-          <script>
-            <name>Gazebo/Yellow</name>
-            <uri>file://media/materials/scripts/gazebo.material</uri>
-          </script>
-        </material>
-      </visual>
-      <visual name='link7_fixed_joint_lump__cube-front_visual_6'>
-        <pose>-0 0.19 -0 1.5708 -0 -3.14159</pose>
-        <geometry>
-          <box>
-            <size>0.09 0.09 0.0202</size>
-          </box>
-        </geometry>
-        <material>
-          <script>
-            <name>Gazebo/Blue</name>
-            <uri>file://media/materials/scripts/gazebo.material</uri>
-          </script>
-        </material>
-      </visual>
-      <visual name='link7_fixed_joint_lump__cube-left_visual_7'>
-        <pose>-0.04 0.15 0 1.5708 -0 -3.14159</pose>
-        <geometry>
-          <box>
-            <size>0.0202 0.09 0.09</size>
-          </box>
-        </geometry>
-        <material>
-          <script>
-            <name>Gazebo/Red</name>
-            <uri>file://media/materials/scripts/gazebo.material</uri>
-          </script>
-        </material>
-      </visual>
-      <visual name='link7_fixed_joint_lump__cube-right_visual_8'>
-        <pose>0.04 0.15 0 1.5708 -0 -3.14159</pose>
-        <geometry>
-          <box>
-            <size>0.0202 0.09 0.09</size>
-          </box>
-        </geometry>
-        <material>
-          <script>
-            <name>Gazebo/Orange</name>
-            <uri>file://media/materials/scripts/gazebo.material</uri>
-          </script>
-        </material>
-      </visual>
-      <visual name='link7_fixed_joint_lump__cube-up_visual_9'>
-        <pose>-0 0.15 0.0 1.5708 -0 -3.14159</pose>
-        <geometry>
-          <box>
-            <size>0.9 0.0202 0.9</size>
-          </box>
+          <cylinder>
+            <length>0.02</length>
+            <radius>0.5</radius>
+          </cylinder>
         </geometry>
         <material>
           <script>
@@ -655,13 +588,6 @@
       <velocity_decay/>
       <velocity_decay/>
       <velocity_decay/>
-      <velocity_decay/>
-      <velocity_decay/>
-      <velocity_decay/>
-      <velocity_decay/>
-      <velocity_decay/>
-      <velocity_decay/>
-      <velocity_decay/>
       <gravity>1</gravity>
       <velocity_decay/>
     </link>
@@ -670,15 +596,5 @@
       <robotNamespace>/sevenbot</robotNamespace>
       <robotSimType>gazebo_ros_control/DefaultRobotHWSim</robotSimType>
     </plugin>
-    <transmission name='trans1'>
-      <type>transmission_interface/SimpleTransmission</type>
-      <joint name='theta1'>
-        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
-      </joint>
-      <actuator name='motor1'>
-        <mechanicalReduction>1</mechanicalReduction>
-        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
-      </actuator>
-    </transmission>
   </model>
 </sdf>

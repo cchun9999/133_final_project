@@ -2,8 +2,8 @@
   <!-- You can overwrite these arguments from the commmand line. -->
 
   <!-- URDF parameter. -->
-  <arg name="model" default="$(find gazebodemos)/urdf/seveneffort.urdf"/>
-  <arg name="model_sdf" default="$(find gazebodemos)/models/seveneffort.sdf"/>
+  <arg name="model" default="$(find gazebodemos)/urdf/seveneffort2.urdf"/>
+  <arg name="model_sdf" default="$(find gazebodemos)/models/seveneffort_new.sdf"/>
 
   <!-- The control parameters, stored in the YAML file.  -->
   <arg name="control_parameters"
