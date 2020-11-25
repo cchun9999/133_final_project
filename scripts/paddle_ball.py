@@ -26,11 +26,14 @@ from gazebodemos.kinematics2 import Kinematics
 from std_msgs.msg            import Float64
 from sensor_msgs.msg         import JointState
 from geometry_msgs.msg       import PointStamped
+from geometry_msgs.msg import Vector3
 
 from gazebo_msgs.srv import GetModelState
 from gazebo_msgs.srv import GetLinkState
 from gazebo_msgs.srv import GetPhysicsProperties
+from gazebo_msgs.srv import SetPhysicsProperties
 from gazebo_msgs.msg import LinkState
+from gazebo_msgs.msg import ODEPhysics
 
 
 #
@@ -220,6 +223,15 @@ def get_paddle_velocity(initial_vel, final_vel, paddle_mass, ball_mass, e):
     paddle_vel = paddle_vel_norm * J_unit
     return paddle_vel, J_unit
 
+def change_gravity(x, y, z):
+    gravity = Vector3()
+    gravity.x = x
+    gravity.y = y
+    gravity.z = z
+    set_gravity = rospy.ServiceProxy('/gazebo/set_physics_properties', SetPhysicsProperties)
+    set_gravity(physics().time_step, physics().max_update_rate, gravity, ODEPhysics())
+
+
 #
 #  Main Code
 #
@@ -286,6 +298,9 @@ if __name__ == "__main__":
     physics = rospy.ServiceProxy('/gazebo/get_physics_properties', GetPhysicsProperties)
     grav = physics().gravity.z
 
+    # Test changing gravity (if uncommented with these values then the ball shouldn't move
+    # during the simulation)
+    #change_gravity(0,0,0)
 
     #
     #  TIME LOOP
