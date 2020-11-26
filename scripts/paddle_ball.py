@@ -314,6 +314,7 @@ if __name__ == "__main__":
         # Using the result theta(i-1) of the last cycle (i-1): Compute
         # the fkin(theta(i-1)) and the Jacobian J(theta(i-1)).
         num_iters += 1
+        print("ITER #:", num_iters)
         t = 0
         tf = 0.8
         tf_ball = None
@@ -346,11 +347,16 @@ if __name__ == "__main__":
         #     p0 = np.array([[0], [0.95], [0.6]])
         p0, _ = kin.fkin(theta)
         x0, y0, z0 = p0.flatten()
-        print(z0)
+        print("z0:", z0)
         spline_x = compute_spline(tf_ball/2, np.array([[x0], [0], [ball_xf], [0]]))
         spline_y = compute_spline(tf_ball/2, np.array([[y0], [0], [ball_yf], [0]]))
-        
-        spline_z = compute_spline(tf_ball/2, np.array([[z0], [0], [0.4], [0]]))
+
+
+        paddle_state = model_state("sevenbot", "link7")
+        paddle_vz = paddle_state.twist.linear.z
+        print("paddle z-velocity:", paddle_vz)
+        hit_vel = 0.0
+        spline_z_down = compute_spline(tf_ball/2, np.array([[z0], [paddle_vz], [0.4], [0]]))
 
         
         # Forward pass: Move Z of tip from 0.6 to 0.3 in the desired amount of time.
@@ -364,7 +370,7 @@ if __name__ == "__main__":
             (p, R) = kin.fkin(theta)
             J      = kin.Jac(theta)
 
-            (pd, Rd, vd, wd) = desired(t, spline_z, spline_x, spline_y)
+            (pd, Rd, vd, wd) = desired(t, spline_z_down, spline_x, spline_y)
             # Determine the residual error.
             e = etip(p, pd, R, Rd)
 
@@ -398,32 +404,26 @@ if __name__ == "__main__":
             pub.send(theta)
             servo.sleep()
 
+        (p, R) = kin.fkin(theta)
+        paddle_state = model_state("sevenbot", "link7")
+        paddle_vz = paddle_state.twist.linear.z
+        spline_z_up = compute_spline(tf_ball/2, np.array([[p[2]], [paddle_vz], [0.6], [hit_vel]]))
 
-        # Backward pass: Move Z of tip from 0.6 to 0.3 in the desired amount of time.
-        # For now, I just "reversed" time to simulate reverse trajectory.
-        for t in np.arange(tf_ball/2, 0 -1e-3, -dt):
+        # Backward (Up) pass: Move the paddle back up to original z, ending with a hit of the ball.
+        # Don't change x or y since they should already be in the target orientation.
+        for t in np.arange(0, tf_ball/2, dt):
             print("Backward pass")
             (p, R) = kin.fkin(theta)
             J      = kin.Jac(theta)
 
-            (pd, Rd, vd, wd) = desired(t, spline_z)
+            (pd, Rd, vd, wd) = desired(t, spline_z_up)
             # Reset the x, y positions to be where the ball will land,
             # which should be where we're at already
-            pd[0] = ball_xf
-            pd[1] = ball_yf
+            pd[0] = p[0]
+            pd[1] = p[1]
 
             # Determine the residual error.
             e = etip(p, pd, R, Rd)
-
-            # Compute the new desired.
-            # if t<0.0:
-            #     # Note the negative time trick: Simply hold the desired at
-            #     # the starting pose (t=0).  And enforce zero velocity.
-            #     # This allows the initial guess to converge to the
-            #     # starting position/orientation!
-            #     (pd, Rd, vd, wd) = desired(0.0, spline_z)
-            #     vd = vd * 0.0
-            #     wd = wd * 0.0
 
             # Build the reference velocity.
             vr = np.vstack((vd,wd)) + lam * e
