@@ -237,7 +237,7 @@ def get_paddle_velocity():
     paddle_state = model_state("sevenbot", "link7")
     paddle_vel_transf = np.array([paddle_state.twist.linear.x, paddle_state.twist.linear.y,
                                   paddle_state.twist.linear.z])
-    R = np.identity(3) #Rx(np.pi)
+    R = Rx(np.pi)
     paddle_vel = paddle_vel_transf.T @ R
     return paddle_vel.T
 
