@@ -255,13 +255,14 @@ def get_paddle_pos():
     return paddle_pos.T
 
 def compute_transform_quaternion(vec_s, vec_t):
+    vec_s /= np.linalg.norm(vec_s)
+    vec_t /= np.linalg.norm(vec_t)
     print("(vec_s, vec_t):", vec_s.T, vec_t.T)
-    axis = np.cross(vec_t, vec_s)
+    axis = np.cross(vec_s, vec_t)
     axis /= np.linalg.norm(axis)
     angle = np.arccos(np.dot(vec_s, vec_t))
     quat = Quaternion(axis=axis, angle=angle)
     return axis.reshape((-1, 1)), quat
-
 
 
 #
@@ -408,7 +409,7 @@ if __name__ == "__main__":
         print("Transform quat rotation matrix:", transform_quat.rotation_matrix)
         current_quat = Quaternion(matrix=R)
         quat_axis = current_quat.rotation_matrix @ quat_axis
-        target_R = current_quat.rotation_matrix @ transform_quat.rotation_matrix
+        target_R = transform_quat.rotation_matrix @ current_quat.rotation_matrix
         target_quat = Quaternion(matrix=target_R)
         num_intermediates = int(tf_ball/(2*dt)) + 1
         intermediate_quats = Quaternion.intermediates(current_quat, target_quat, num_intermediates, 
