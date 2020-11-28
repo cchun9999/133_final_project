@@ -300,7 +300,7 @@ def main():
     # Set fraction of time for path used to hit ball
     t_frac_hit = 0.3
 
-    gamma_squared = 1e-6
+    gamma_squared = 1e-4
 
 
     #
@@ -309,8 +309,8 @@ def main():
     # I play one "trick": I start at (t=-1) and use the first second
     # to allow the poor initial guess to move to the starting point.
     #
-    tf_default = 0.8
-    lam =  0.1/dt
+    tf_default = 1
+    lam =  0.05/dt
     num_iters = 0
     while not rospy.is_shutdown():
         # Using the result theta(i-1) of the last cycle (i-1): Compute
