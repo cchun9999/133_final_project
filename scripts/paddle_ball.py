@@ -35,6 +35,8 @@ from gazebo_msgs.srv import SetPhysicsProperties
 from gazebo_msgs.msg import LinkState
 from gazebo_msgs.msg import ODEPhysics
 
+from pyquaternion import Quaternion
+
 
 #
 #  Joint Command Publisher
@@ -135,6 +137,7 @@ def etip(p, pd, R, Rd):
     eR = 0.5 * (cross(R[:,[0]], Rd[:,[0]]) +
                 cross(R[:,[1]], Rd[:,[1]]) +
                 cross(R[:,[2]], Rd[:,[2]]))
+    #eR = 0.5 * (cross(R[:,[1]], Rd))
     return np.vstack((ep,eR))
 
 
@@ -195,7 +198,7 @@ def call_spline_vel(spline, t):
     # the given time
     return spline.T @ np.array([0, 1, 2*t, 3*t**2])
 
-def get_paddle_velocity(initial_vel, final_vel, paddle_mass, ball_mass, e):
+def get_desired_paddle_velocity(initial_vel, final_vel, paddle_mass, ball_mass, e):
     '''
     Parameters
     ----------
@@ -239,7 +242,7 @@ def get_paddle_velocity():
                                   paddle_state.twist.linear.z])
     R = Rx(np.pi)
     paddle_vel = paddle_vel_transf.T @ R
-    return paddle_vel.T
+    return paddle_vel.T.flatten()
 
 # Get the current paddle velocity from Gazebo
 # Account for tip transformations
@@ -250,6 +253,15 @@ def get_paddle_pos():
     R = Rx(np.pi)
     paddle_pos = paddle_pos_transf.T @ R
     return paddle_pos.T
+
+def compute_transform_quaternion(vec_s, vec_t):
+    print("(vec_s, vec_t):", vec_s.T, vec_t.T)
+    axis = np.cross(vec_t, vec_s)
+    axis /= np.linalg.norm(axis)
+    angle = np.arccos(np.dot(vec_s, vec_t))
+    quat = Quaternion(axis=axis, angle=angle)
+    return axis.reshape((-1, 1)), quat
+
 
 
 #
@@ -304,12 +316,14 @@ if __name__ == "__main__":
     #theta = np.zeros((7, 1))
     theta = np.array([[0.0], [0.0], [0.0], [-0.05], [0.0], [0.0], [0.0]])
 
+    intercept_height = 0.6
+
     # For the initial desired, head to the starting position (t=0).
     # Clear the velocities, just to be sure.
     (pd, Rd, vd, wd) = (np.zeros((3, 1)), np.zeros((3, 3)), np.zeros((3, 1)), np.zeros((3, 1)))
     vd = vd * 0.0
     wd = wd * 0.0
-    pd = np.array([[0], [0.90], [0.6]])
+    pd = np.array([[0], [0.90], [intercept_height]])
 
     # Get a model state service proxy to be able to query state of the ball
     model_state = rospy.ServiceProxy('/gazebo/get_model_state', GetModelState)
@@ -321,6 +335,21 @@ if __name__ == "__main__":
     # Test changing gravity (if uncommented with these values then the ball shouldn't move
     # during the simulation)
     #change_gravity(0,0,0)
+    target_x = 0
+    target_y = 1.0
+    # Function to return target (x,y) of ball at given time
+    get_target_xy = lambda t: (np.sin(t), np.cos(t))
+    target_max_height = 2
+    t_arc = np.sqrt(-2 * target_max_height / grav)
+
+    #Masses
+    ball_mass = 0.02
+    paddle_mass = 0.2
+
+    #Coefficient of Restitution
+    restitution = 1
+
+    
 
     #
     #  TIME LOOP
@@ -335,7 +364,12 @@ if __name__ == "__main__":
         # the fkin(theta(i-1)) and the Jacobian J(theta(i-1)).
         num_iters += 1
         print("ITER #:", num_iters)
+        print("THETA:", theta.T)
         tf_default = 0.8
+
+        # Get the target (x, y) to hit the ball towards
+        target_iters = 20
+        target_x, target_y = get_target_xy(num_iters/target_iters * (2*np.pi))
 
         print("paddle velocity (INITIAL):", get_paddle_velocity())
 
@@ -344,8 +378,7 @@ if __name__ == "__main__":
         # plan the trajectory of the robot to hit it at the right time.
         ball_state = model_state("ball", "link")
         ball_vz, ball_z = ball_state.twist.linear.z, ball_state.pose.position.z
-        ball_solns = np.roots(np.array([1/2*grav, ball_vz, ball_z - 0.6]))
-        print("ball solns for z = 0.6:", ball_solns)
+        ball_solns = np.roots(np.array([1/2*grav, ball_vz, ball_z - intercept_height]))
         tf_ball = max(ball_solns)
         if not np.isreal(tf_ball):
             # default to tf if failed to find a root
@@ -358,10 +391,30 @@ if __name__ == "__main__":
         ball_yf = ball_state.pose.position.y + ball_state.twist.linear.y * tf_ball
         print(f"ball projected (x,y): {ball_xf, ball_yf}")
 
+
+        ball_vel_final = np.array([[ball_state.twist.linear.x], [ball_state.twist.linear.y], [ball_vz + grav * tf_ball]])
+        ball_vel_desired = np.array([[(target_x - ball_xf)/t_arc], [(target_y - ball_yf)/t_arc], [np.sqrt(2 * (target_max_height - intercept_height))]])
+        paddle_hit_vel, paddle_hit_rot = get_desired_paddle_velocity(ball_vel_final, ball_vel_desired, paddle_mass, ball_mass, restitution)
+        print("paddle_hit_rot:", paddle_hit_rot)
+
+
         # Compute the desired splines for each dimension of the paddle tip.
         # Use the initial tip position of p0.
         # z is forced to go between 0.6 and 0.3
-        p0, _ = kin.fkin(theta)
+        p0, R = kin.fkin(theta)
+
+        # Compute the Orientation interpolation using quaternions
+        quat_axis, transform_quat = compute_transform_quaternion(R[:, 1], paddle_hit_rot.flatten())
+        print("Transform quat rotation matrix:", transform_quat.rotation_matrix)
+        current_quat = Quaternion(matrix=R)
+        quat_axis = current_quat.rotation_matrix @ quat_axis
+        target_R = current_quat.rotation_matrix @ transform_quat.rotation_matrix
+        target_quat = Quaternion(matrix=target_R)
+        num_intermediates = int(tf_ball/(2*dt)) + 1
+        intermediate_quats = Quaternion.intermediates(current_quat, target_quat, num_intermediates, 
+                                                      include_endpoints=False)
+
+
         x0, y0, z0 = p0.flatten()
         # Use the current paddle velocity as initial velocity to ensure smooth
         # trajectory
@@ -374,23 +427,30 @@ if __name__ == "__main__":
 
         
         # Forward pass: Move Z of tip from 0.6 to 0.3 in the desired amount of time.
-        for t in np.arange(0, tf_ball/2, dt):
+        for t in np.arange(0, tf_ball/2+1e-6, dt):
 
             (p, R) = kin.fkin(theta)
             J      = kin.Jac(theta)
 
             (pd, Rd, vd, wd) = desired(t, spline_z_down, spline_x, spline_y)
+            Rd = next(intermediate_quats).rotation_matrix
             # Determine the residual error.
             e = etip(p, pd, R, Rd)
             # Build the reference velocity.
             vr = np.vstack((vd,wd)) + lam * e
             # Compute the Jacbian inverse (pseudo inverse)
             #Jpinv = np.linalg.pinv(J)
-            gamma = 0.05
+            gamma = 0.04
             weighted_inv = (np.linalg.inv(J.T@J + (gamma**2)*np.identity(N)))@J.T
 
             # Update the joint angles.
             thetadot = weighted_inv @ vr
+            # Add Secondary Task
+            # theta_center = np.array([[-np.pi/4], [-np.pi/4], [np.pi/2], [-np.pi/2], [0], [0], [0]])
+            # theta_dot_secondary = -0.5*(theta - theta_center)
+            # theta_dot_secondary = np.zeros((N, 1))
+            # theta_dot_secondary[5] = -theta[5]
+            # thetadot += (np.identity(weighted_inv.shape[0])-weighted_inv@J)@theta_dot_secondary
             theta   += dt * thetadot
 
             # Publish and sleep for the rest of the time.  You can choose
@@ -402,16 +462,19 @@ if __name__ == "__main__":
         # Compute the z-spline for the upwards motion. X and Y stay constant
         (p, R) = kin.fkin(theta)
         paddle_vel = get_paddle_velocity()
-        spline_z_up = compute_spline(tf_ball/2, np.array([[p[2]], [paddle_vel[2]], [0.6], [hit_vel]]))
+        print("paddle velocity in-between:", paddle_vel)
+        spline_z_up = compute_spline(tf_ball/2, np.array([[p[2]], [paddle_vel[2]], [intercept_height], [hit_vel]]))
         print('spline_z_up:', spline_z_up)
 
         # Backward (Up) pass: Move the paddle back up to original z, ending with a hit of the ball.
         # Don't change x or y since they should already be in the target orientation.
-        for t in np.arange(0, tf_ball/2, dt):
+        for t in np.arange(0, tf_ball/2 +1e-6, dt):
             (p, R) = kin.fkin(theta)
             J      = kin.Jac(theta)
 
             (pd, Rd, vd, wd) = desired(t, spline_z_up)
+            Rd = target_quat.rotation_matrix
+            #Rd = R
             # Reset the x, y positions to be where the ball will land,
             # which should be where we're at already
             pd[0] = p[0]
@@ -423,13 +486,18 @@ if __name__ == "__main__":
             vr = np.vstack((vd,wd)) + lam * e
             # Compute the Jacbian inverse (pseudo inverse)
             # Jpinv = np.linalg.pinv(J)
-            gamma = 0.05
+            gamma = 0.04
             weighted_inv = (np.linalg.inv(J.T@J + (gamma**2)*np.identity(N)))@J.T
 
             # Update the joint angles.
             thetadot = weighted_inv @ vr
+            # Add Secondary Task
+            # theta_center = np.array([[-np.pi/4], [-np.pi/4], [np.pi/2], [-np.pi/2], [0], [0], [0]])
+            # theta_dot_secondary = -0.5*(theta - theta_center)
+            # theta_dot_secondary = np.zeros((N, 1))
+            # theta_dot_secondary[5] = -theta[5]
+            # thetadot += (np.identity(weighted_inv.shape[0])-weighted_inv@J)@theta_dot_secondary
             theta   += dt * thetadot
-
             # Publish and sleep for the rest of the time.  You can choose
             # whether to show the initial "negative time convergence"....
             # if not t<0:
