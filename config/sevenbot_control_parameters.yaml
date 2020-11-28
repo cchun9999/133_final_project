@@ -90,3 +90,91 @@ sevenbot:
     type: effort_controllers/JointPositionController
     joint: theta7
     pid: {p: 100.0, i: 0.0, d: 1.0}
+
+sevenbot2:
+
+  # The joint_state publisher.  This is a fake controller
+  # that causes GAzebo to produce the joint_states topic.
+  joint_state_publisher:
+    type: joint_state_controller/JointStateController
+    publish_rate: 100
+
+  # The position commands.  These controllers simply pass
+  # position (angle) commands as values into the simulation.
+  joint1_position:
+    type: position_controllers/JointPositionController
+    joint: theta1
+  joint2_position:
+    type: position_controllers/JointPositionController
+    joint: theta2
+  joint3_position:
+    type: position_controllers/JointPositionController
+    joint: theta3
+  joint4_position:
+    type: position_controllers/JointPositionController
+    joint: theta4
+  joint5_position:
+    type: position_controllers/JointPositionController
+    joint: theta5
+  joint6_position:
+    type: position_controllers/JointPositionController
+    joint: theta6
+  joint7_position:
+    type: position_controllers/JointPositionController
+    joint: theta7
+
+  # The effort commands.  These controllers simply pass
+  # effort (torque) commands into the simulation.
+  joint1_effort:
+    type: effort_controllers/JointEffortController
+    joint: theta1
+  joint2_effort:
+    type: effort_controllers/JointEffortController
+    joint: theta2
+  joint3_effort:
+    type: effort_controllers/JointEffortController
+    joint: theta3
+  joint4_effort:
+    type: effort_controllers/JointEffortController
+    joint: theta4
+  joint5_effort:
+    type: effort_controllers/JointEffortController
+    joint: theta5
+  joint6_effort:
+    type: effort_controllers/JointEffortController
+    joint: theta6
+  joint7_effort:
+    type: effort_controllers/JointEffortController
+    joint: theta7
+
+  # The PD position controllers generating torque commands based on
+  # position commands and feedback of position from the simulation.
+  joint1_position_controller:
+    type: effort_controllers/JointPositionController
+    joint: theta1
+    pid: {p: 10000.0, i: 0.0, d: 100.0}
+  joint2_position_controller:
+    type: effort_controllers/JointPositionController
+    joint: theta2
+    pid: {p: 10000.0, i: 0.0, d: 100.0}
+  joint3_position_controller:
+    type: effort_controllers/JointPositionController
+    joint: theta3
+    pid: {p: 1000.0, i: 0.0, d: 10.0}
+  joint4_position_controller:
+    type: effort_controllers/JointPositionController
+    joint: theta4
+    pid: {p: 1000.0, i: 0.0, d: 10.0}
+  joint5_position_controller:
+    type: effort_controllers/JointPositionController
+    joint: theta5
+    pid: {p: 100.0, i: 0.0, d: 1.0}
+  joint6_position_controller:
+    type: effort_controllers/JointPositionController
+    joint: theta6
+    pid: {p: 100.0, i: 0.0, d: 1.0}
+  joint7_position_controller:
+    type: effort_controllers/JointPositionController
+    joint: theta7
+    pid: {p: 100.0, i: 0.0, d: 1.0}
+

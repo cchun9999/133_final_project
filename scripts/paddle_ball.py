@@ -45,7 +45,7 @@ from pyquaternion import Quaternion
 #  on the /sevenbot/jointX_position/command topics (for Gazebo).
 #
 class JointCommandPublisher:
-    def __init__(self, urdfnames, controlnames):
+    def __init__(self, urdfnames, controlnames, topic_root='sevevenbot'):
         # Make sure the name lists have equal length.
         assert len(urdfnames) == len(controlnames), "Unequal lengths"
 
@@ -62,7 +62,7 @@ class JointCommandPublisher:
         # Prepare a list of publishers for each joint commands.
         self.pubX  = []
         for name in controlnames:
-            topic = "/sevenbot/" + name + "/command"
+            topic = "/" + topic_root +"/" + name + "/command"
             self.pubX.append(rospy.Publisher(topic, Float64, queue_size=100))
 
         # Wait until connected.  You don't have to wait, but the first
@@ -236,8 +236,8 @@ def change_gravity(x, y, z):
 
 # Get the current paddle velocity from Gazebo
 # Account for tip transformations
-def get_paddle_velocity():
-    paddle_state = model_state("sevenbot", "link7")
+def get_paddle_velocity(robot_name):
+    paddle_state = model_state(robot_name, "link7")
     paddle_vel_transf = np.array([paddle_state.twist.linear.x, paddle_state.twist.linear.y,
                                   paddle_state.twist.linear.z])
     R = Rx(np.pi)
@@ -246,8 +246,8 @@ def get_paddle_velocity():
 
 # Get the current paddle velocity from Gazebo
 # Account for tip transformations
-def get_paddle_pos():
-    paddle_state = model_state("sevenbot", "link7")
+def get_paddle_pos(robot_name):
+    paddle_state = model_state(robot_name, "link7")
     paddle_pos_transf = np.array([paddle_state.pose.position.x, paddle_state.pose.position.y,
                                   paddle_state.pose.position.z])
     R = Rx(np.pi)
@@ -264,6 +264,32 @@ def compute_transform_quaternion(vec_s, vec_t):
     quat = Quaternion(axis=axis, angle=angle)
     return axis.reshape((-1, 1)), quat
 
+#####
+# 7DOF robot class used to encapsulate desired robot and its parameters.
+# Specifically useful for creating identical robots.
+####
+class SevenDOFRobot:
+
+    def __init__(self, robot_description='/robot_description', robot_name='sevenbot'):
+        self.urdf = rospy.get_param(robot_description)
+        self.kin  = Kinematics(self.urdf, 'world', 'tip')
+        self.N    = self.kin.dofs()
+        rospy.loginfo("Loaded URDF for %d joints" % self.N)
+        self.name = robot_name
+
+        self.pub = JointCommandPublisher(('theta1', 'theta2', 'theta3', 'theta4',
+                                 'theta5', 'theta6', 'theta7'),
+                                ('joint1_position_controller',
+                                 'joint2_position_controller',
+                                 'joint3_position_controller',
+                                 'joint4_position_controller',
+                                 'joint5_position_controller',
+                                 'joint6_position_controller',
+                                 'joint7_position_controller'),
+                                topic_root=robot_name)
+        # Make sure the URDF and publisher agree in dimensions.
+        if not self.pub.dofs() == self.kin.dofs():
+            rospy.logerr("FIX Publisher to agree with URDF!")
 #
 #  Main Code
 #
@@ -283,25 +309,9 @@ if __name__ == "__main__":
                   (dt, rate))
 
     # Set up the kinematics, from world to tip.
-    urdf = rospy.get_param('/robot_description')
-    kin  = Kinematics(urdf, 'world', 'tip')
-    N    = kin.dofs()
-    rospy.loginfo("Loaded URDF for %d joints" % N)
-
-    # Set up the publisher, naming the joints!
-    pub = JointCommandPublisher(('theta1', 'theta2', 'theta3', 'theta4',
-                                 'theta5', 'theta6', 'theta7'),
-                                ('joint1_position_controller',
-                                 'joint2_position_controller',
-                                 'joint3_position_controller',
-                                 'joint4_position_controller',
-                                 'joint5_position_controller',
-                                 'joint6_position_controller',
-                                 'joint7_position_controller'))
-
-    # Make sure the URDF and publisher agree in dimensions.
-    if not pub.dofs() == kin.dofs():
-        rospy.logerr("FIX Publisher to agree with URDF!")
+    robot1 = SevenDOFRobot("/robot_description", "sevenbot")
+    robot2 = SevenDOFRobot("/robot_description2", "sevenbot2")
+    N = robot1.N
 
     # Set the numpy printing options (as not to be overly confusing).
     # This is entirely to make it look pretty (in my opinion).
@@ -372,7 +382,7 @@ if __name__ == "__main__":
         # Set up "sprinkler" orbit for the ball
         # target_x, target_y = get_target_xy(num_iters/target_iters * (2*np.pi))
 
-        print("paddle velocity (INITIAL):", get_paddle_velocity())
+        print("paddle velocity (INITIAL):", get_paddle_velocity(robot1.name))
 
         # Get information on the state of the ball. Use this to compute the
         # time it will take the ball to reach the z = 0.6 point so that we can
@@ -401,7 +411,7 @@ if __name__ == "__main__":
         # Compute the desired splines for each dimension of the paddle tip.
         # Use the initial tip position of p0.
         # z is forced to go between 0.6 and 0.3
-        p0, R = kin.fkin(theta)
+        p0, R = robot1.kin.fkin(theta)
 
         # Compute the Orientation interpolation using quaternions
         quat_axis, transform_quat = compute_transform_quaternion(R[:, 1], paddle_hit_rot.flatten())
@@ -417,7 +427,7 @@ if __name__ == "__main__":
         x0, y0, z0 = p0.flatten()
         # Use the current paddle velocity as initial velocity to ensure smooth
         # trajectory
-        paddle_vel = get_paddle_velocity()
+        paddle_vel = get_paddle_velocity(robot1.name)
         print("paddle velocity:", paddle_vel)
         spline_x = compute_spline(tf_ball/2, np.array([[x0], [paddle_vel[0]], [ball_xf], [0]]))
         spline_y = compute_spline(tf_ball/2, np.array([[y0], [paddle_vel[1]], [ball_yf], [0]]))
@@ -428,8 +438,8 @@ if __name__ == "__main__":
         # Forward pass: Move Z of tip from 0.6 to 0.3 in the desired amount of time.
         for t in np.arange(0, tf_ball/2+1e-6, dt):
 
-            (p, R) = kin.fkin(theta)
-            J      = kin.Jac(theta)
+            (p, R) = robot1.kin.fkin(theta)
+            J      = robot1.kin.Jac(theta)
 
             (pd, Rd, vd, wd) = desired(t, spline_z_down, spline_x, spline_y)
             Rd = next(intermediate_quats).rotation_matrix
@@ -455,12 +465,13 @@ if __name__ == "__main__":
             # Publish and sleep for the rest of the time.  You can choose
             # whether to show the initial "negative time convergence"....
             # if not t<0:
-            pub.send(theta)
+            robot1.pub.send(theta)
+            robot2.pub.send(theta)
             servo.sleep()
 
         # Compute the z-spline for the upwards motion. X and Y stay constant
-        (p, R) = kin.fkin(theta)
-        paddle_vel = get_paddle_velocity()
+        (p, R) = robot1.kin.fkin(theta)
+        paddle_vel = get_paddle_velocity(robot1.name)
         print("paddle velocity in-between:", paddle_vel)
         spline_z_up = compute_spline(tf_ball/2, np.array([[p[2]], [paddle_vel[2]], [intercept_height], [hit_vel]]))
         print('spline_z_up:', spline_z_up)
@@ -468,8 +479,8 @@ if __name__ == "__main__":
         # Backward (Up) pass: Move the paddle back up to original z, ending with a hit of the ball.
         # Don't change x or y since they should already be in the target orientation.
         for t in np.arange(0, tf_ball/2 +1e-6, dt):
-            (p, R) = kin.fkin(theta)
-            J      = kin.Jac(theta)
+            (p, R) = robot1.kin.fkin(theta)
+            J      = robot1.kin.Jac(theta)
 
             (pd, Rd, vd, wd) = desired(t, spline_z_up)
             Rd = target_quat.rotation_matrix
@@ -500,8 +511,6 @@ if __name__ == "__main__":
             # Publish and sleep for the rest of the time.  You can choose
             # whether to show the initial "negative time convergence"....
             # if not t<0:
-            pub.send(theta)
+            robot1.pub.send(theta)
+            robot2.pub.send(theta)
             servo.sleep()
-
-        paddle_vel = get_paddle_velocity()
-        print("paddle velocity (FINAL):", paddle_vel)
