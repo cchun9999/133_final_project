@@ -45,7 +45,7 @@ from pyquaternion import Quaternion
 #  on the /sevenbot/jointX_position/command topics (for Gazebo).
 #
 class JointCommandPublisher:
-    def __init__(self, urdfnames, controlnames, topic_root='/sevenbot'):
+    def __init__(self, urdfnames, controlnames):
         # Make sure the name lists have equal length.
         assert len(urdfnames) == len(controlnames), "Unequal lengths"
 
@@ -62,7 +62,7 @@ class JointCommandPublisher:
         # Prepare a list of publishers for each joint commands.
         self.pubX  = []
         for name in controlnames:
-            topic = topic_root + name + "/command"
+            topic = "/sevenbot/" + name + "/command"
             self.pubX.append(rospy.Publisher(topic, Float64, queue_size=100))
 
         # Wait until connected.  You don't have to wait, but the first
@@ -137,7 +137,7 @@ def etip(p, pd, R, Rd):
     eR = 0.5 * (cross(R[:,[0]], Rd[:,[0]]) +
                 cross(R[:,[1]], Rd[:,[1]]) +
                 cross(R[:,[2]], Rd[:,[2]]))
-    #eR = 0.5 * (cross(R[:,[1]], Rd))
+    #eR = 0.5 * (cross(R[:,[1]], Rd[:, [1]]))
     return np.vstack((ep,eR))
 
 
@@ -226,11 +226,6 @@ def get_desired_paddle_velocity(initial_vel, final_vel, paddle_mass, ball_mass, 
     paddle_vel = paddle_vel_norm * J_unit
     return paddle_vel, J_unit
 
-# def get_desired_paddle_velocity_test(initial_vel, final_vel, paddle_mass, ball_mass, e):
-#     num = (paddle_mass + ball_mass)*final_vel - ball_mass*initial_vel + paddle_mass*e*initial_vel
-#     denom = paddle_mass * (1 + e)
-#     return num / denom
-
 def change_gravity(x, y, z):
     gravity = Vector3()
     gravity.x = x
@@ -260,14 +255,14 @@ def get_paddle_pos():
     return paddle_pos.T
 
 def compute_transform_quaternion(vec_s, vec_t):
+    vec_s /= np.linalg.norm(vec_s)
+    vec_t /= np.linalg.norm(vec_t)
     print("(vec_s, vec_t):", vec_s.T, vec_t.T)
-    axis = np.cross(vec_t, vec_s)
+    axis = np.cross(vec_s, vec_t)
     axis /= np.linalg.norm(axis)
     angle = np.arccos(np.dot(vec_s, vec_t))
     quat = Quaternion(axis=axis, angle=angle)
     return axis.reshape((-1, 1)), quat
-
-
 
 #
 #  Main Code
@@ -340,12 +335,11 @@ if __name__ == "__main__":
     # Test changing gravity (if uncommented with these values then the ball shouldn't move
     # during the simulation)
     #change_gravity(0,0,0)
-    target_x = 0.0
+    target_x = 0
     target_y = 1.0
     # Function to return target (x,y) of ball at given time
     get_target_xy = lambda t: (np.sin(t), np.cos(t))
-
-    target_max_height = 1.0
+    target_max_height = 2
     t_arc = np.sqrt(-2 * target_max_height / grav)
 
     #Masses
@@ -374,10 +368,9 @@ if __name__ == "__main__":
         tf_default = 0.8
 
         # Get the target (x, y) to hit the ball towards
-        target_iters = 60
+        target_iters = 20
         # Set up "sprinkler" orbit for the ball
-        prev_target_x, prev_target_y = target_x, target_y
-        #target_x, target_y = get_target_xy(num_iters/target_iters * (2*np.pi))
+        # target_x, target_y = get_target_xy(num_iters/target_iters * (2*np.pi))
 
         print("paddle velocity (INITIAL):", get_paddle_velocity())
 
@@ -397,18 +390,13 @@ if __name__ == "__main__":
         # Compute the projected final x, y positions of the ball
         ball_xf = ball_state.pose.position.x + ball_state.twist.linear.x * tf_ball 
         ball_yf = ball_state.pose.position.y + ball_state.twist.linear.y * tf_ball
-        print(f"prev target (x, y): {prev_target_x, prev_target_y}")
         print(f"ball projected (x,y): {ball_xf, ball_yf}")
 
 
         ball_vel_final = np.array([[ball_state.twist.linear.x], [ball_state.twist.linear.y], [ball_vz + grav * tf_ball]])
         ball_vel_desired = np.array([[(target_x - ball_xf)/t_arc], [(target_y - ball_yf)/t_arc], [np.sqrt(2 * (target_max_height - intercept_height))]])
         paddle_hit_vel, paddle_hit_rot = get_desired_paddle_velocity(ball_vel_final, ball_vel_desired, paddle_mass, ball_mass, restitution)
-        print("paddle_hit_rot:", paddle_hit_rot.T)
-        print("paddle_hit_vel:", paddle_hit_vel.T)
-        # DON'T USE VELOCITIES FOR NOW
-        paddle_hit_vel = np.zeros((3, 1))
-
+        print("paddle_hit_rot:", paddle_hit_rot)
 
         # Compute the desired splines for each dimension of the paddle tip.
         # Use the initial tip position of p0.
@@ -419,12 +407,11 @@ if __name__ == "__main__":
         quat_axis, transform_quat = compute_transform_quaternion(R[:, 1], paddle_hit_rot.flatten())
         print("Transform quat rotation matrix:", transform_quat.rotation_matrix)
         current_quat = Quaternion(matrix=R)
-        quat_axis = current_quat.rotation_matrix @ quat_axis
-        target_R = current_quat.rotation_matrix @ transform_quat.rotation_matrix
+        target_R = transform_quat.rotation_matrix @ current_quat.rotation_matrix
         target_quat = Quaternion(matrix=target_R)
-        num_intermediates = int(tf_ball/(2*dt))
+        num_intermediates = int(tf_ball/(2*dt)) + 1
         intermediate_quats = Quaternion.intermediates(current_quat, target_quat, num_intermediates, 
-                                                      include_endpoints=True)
+                                                      include_endpoints=False)
 
 
         x0, y0, z0 = p0.flatten()
@@ -458,11 +445,11 @@ if __name__ == "__main__":
             # Update the joint angles.
             thetadot = weighted_inv @ vr
             # Add Secondary Task
-            # theta_center = np.array([[-np.pi/4], [-np.pi/4], [np.pi/2], [-np.pi/2], [0], [0], [0]])
-            # theta_dot_secondary = -0.5*(theta - theta_center)
-            # theta_dot_secondary = np.zeros((N, 1))
-            # theta_dot_secondary[5] = -10*theta[5]
-            # thetadot += (np.identity(weighted_inv.shape[0])-weighted_inv@J)@theta_dot_secondary
+            # theta_center = np.array([[-0], [-0], [0], [-0], [0], [0], [0]])
+            # theta_dot_secondary = -2*(theta - theta_center)
+            #theta_dot_secondary = np.zeros((N, 1))
+            #theta_dot_secondary[5] = -10*theta[5]
+            #thetadot += (np.identity(weighted_inv.shape[0])-weighted_inv@J)@theta_dot_secondary
             theta   += dt * thetadot
 
             # Publish and sleep for the rest of the time.  You can choose
@@ -475,10 +462,8 @@ if __name__ == "__main__":
         (p, R) = kin.fkin(theta)
         paddle_vel = get_paddle_velocity()
         print("paddle velocity in-between:", paddle_vel)
-        spline_z_up = compute_spline(tf_ball/2, np.array([[p[2]], [paddle_vel[2]], [intercept_height], [paddle_hit_vel[2]]]))
+        spline_z_up = compute_spline(tf_ball/2, np.array([[p[2]], [paddle_vel[2]], [intercept_height], [hit_vel]]))
         print('spline_z_up:', spline_z_up)
-        # spline_x_up = compute_spline(tf_ball/2, np.array([[p[0]], [0], [p[0]], [paddle_hit_vel[0]]]))
-        # spline_y_up = compute_spline(tf_ball/2, np.array([[p[1]], [0], [p[1]], [paddle_hit_vel[1]]]))
 
         # Backward (Up) pass: Move the paddle back up to original z, ending with a hit of the ball.
         # Don't change x or y since they should already be in the target orientation.
@@ -506,11 +491,11 @@ if __name__ == "__main__":
             # Update the joint angles.
             thetadot = weighted_inv @ vr
             # Add Secondary Task
-            # theta_center = np.array([[-np.pi/4], [-np.pi/4], [np.pi/2], [-np.pi/2], [0], [0], [0]])
-            # theta_dot_secondary = -0.5*(theta - theta_center)
-            # theta_dot_secondary = np.zeros((N, 1))
-            # theta_dot_secondary[5] =-10*theta[5]
-            # thetadot += (np.identity(weighted_inv.shape[0])-weighted_inv@J)@theta_dot_secondary
+            # theta_center = np.array([[-0], [-0], [0], [-0], [0], [0], [0]])
+            # theta_dot_secondary = -2*(theta - theta_center)
+            #theta_dot_secondary = np.zeros((N, 1))
+            #theta_dot_secondary[5] = -10*theta[5]
+            #thetadot += (np.identity(weighted_inv.shape[0])-weighted_inv@J)@theta_dot_secondary
             theta   += dt * thetadot
             # Publish and sleep for the rest of the time.  You can choose
             # whether to show the initial "negative time convergence"....
