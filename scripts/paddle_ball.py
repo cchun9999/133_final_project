@@ -278,13 +278,12 @@ if __name__ == "__main__":
 
     # Set up the publisher, naming the joints!
     pub = JointCommandPublisher(('theta1', 'theta2', 'theta3', 'theta4',
-                                 'theta5', 'theta6', 'theta7'),
+                                 'theta5', 'theta7'),
                                 ('joint1_position_controller',
                                  'joint2_position_controller',
                                  'joint3_position_controller',
                                  'joint4_position_controller',
                                  'joint5_position_controller',
-                                 'joint6_position_controller',
                                  'joint7_position_controller'))
 
     # Make sure the URDF and publisher agree in dimensions.
@@ -302,7 +301,7 @@ if __name__ == "__main__":
     # Pick an initial joint position (pretty bad initial guess, but
     # away from the worst singularities).
     #theta = np.zeros((7, 1))
-    theta = np.array([[0.0], [0.0], [0.0], [-0.05], [0.0], [0.0], [0.0]])
+    theta = np.array([[0.0], [0.0], [0.0], [-0.05], [0.0], [0.0]])
 
     # For the initial desired, head to the starting position (t=0).
     # Clear the velocities, just to be sure.

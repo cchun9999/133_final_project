@@ -2,8 +2,8 @@
   <!-- You can overwrite these arguments from the commmand line. -->
 
   <!-- URDF parameter. -->
-  <arg name="model" default="$(find gazebodemos)/urdf/seveneffort2.urdf"/>
-  <arg name="model_sdf" default="$(find gazebodemos)/models/seveneffort_new.sdf"/>
+  <arg name="model" default="$(find gazebodemos)/urdf/sixeffort.urdf"/>
+  <arg name="model_sdf" default="$(find gazebodemos)/models/sixeffort.sdf"/>
 
   <!-- The control parameters, stored in the YAML file.  -->
   <arg name="control_parameters"
@@ -77,5 +77,11 @@
 	respawn="false"
 	output="screen"
 	ns="/sevenbot"
-	args="joint_state_publisher joint1_position_controller joint2_position_controller joint3_position_controller joint4_position_controller joint5_position_controller joint6_position_controller joint7_position_controller"/>
+	args="joint_state_publisher
+        joint1_position_controller
+        joint2_position_controller
+        joint3_position_controller
+        joint4_position_controller
+        joint5_position_controller
+        joint7_position_controller"/>
 </launch>

@@ -29,9 +29,9 @@ sevenbot:
   joint5_position:
     type: position_controllers/JointPositionController
     joint: theta5
-  joint6_position:
-    type: position_controllers/JointPositionController
-    joint: theta6
+  # joint6_position:
+  #   type: position_controllers/JointPositionController
+  #   joint: theta6
   joint7_position:
     type: position_controllers/JointPositionController
     joint: theta7
@@ -53,9 +53,9 @@ sevenbot:
   joint5_effort:
     type: effort_controllers/JointEffortController
     joint: theta5
-  joint6_effort:
-    type: effort_controllers/JointEffortController
-    joint: theta6
+  # joint6_effort:
+  #   type: effort_controllers/JointEffortController
+  #   joint: theta6
   joint7_effort:
     type: effort_controllers/JointEffortController
     joint: theta7
@@ -82,10 +82,10 @@ sevenbot:
     type: effort_controllers/JointPositionController
     joint: theta5
     pid: {p: 100.0, i: 0.0, d: 1.0}
-  joint6_position_controller:
-    type: effort_controllers/JointPositionController
-    joint: theta6
-    pid: {p: 100.0, i: 0.0, d: 1.0}
+  # joint6_position_controller:
+  #   type: effort_controllers/JointPositionController
+  #   joint: theta6
+  #   pid: {p: 100.0, i: 0.0, d: 1.0}
   joint7_position_controller:
     type: effort_controllers/JointPositionController
     joint: theta7
