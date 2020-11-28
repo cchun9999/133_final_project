@@ -5,6 +5,9 @@
   <arg name="model" default="$(find gazebodemos)/urdf/seveneffort2.urdf"/>
   <arg name="model_sdf" default="$(find gazebodemos)/models/seveneffort_new.sdf"/>
 
+  <arg name="model2" default="$(find gazebodemos)/urdf/seveneffort2.urdf"/>
+  <arg name="model2_sdf" default="$(find gazebodemos)/models/seveneffort_left.sdf"/>
+
   <!-- The control parameters, stored in the YAML file.  -->
   <arg name="control_parameters"
        default="$(find gazebodemos)/config/sevenbot_control_parameters.yaml"/>
@@ -23,6 +26,9 @@
   <param name="robot_description" textfile="$(arg model)"/>
   <param name="robot_description_sdf" textfile="$(arg model_sdf)"/>
 
+  <param name="robot_description2" textfile="$(arg model2)"/>
+  <param name="robot_description_sdf2" textfile="$(arg model2_sdf)"/>
+
   <!-- Load the controller parameters -->
   <rosparam command="load" file="$(arg control_parameters)"/>
 
@@ -39,12 +45,19 @@
   </include>
 
   <!-- Service call to gazebo_ros to spawn a URDF robot -->
-  <node pkg="gazebo_ros"
+  <!-- <node pkg="gazebo_ros"
 	type="spawn_model"
 	name="robot_spawner"
 	respawn="false"
 	output="screen"
-	args="-sdf -model sevenbot -param robot_description_sdf"/>
+	args="-sdf -model sevenbot -param robot_description_sdf"/> -->
+
+  <node pkg="gazebo_ros"
+  type="spawn_model"
+  name="robot_spawner2"
+  respawn="false"
+  output="screen"
+  args="-sdf -model sevenbot2 -param robot_description_sdf2 -x 0 -y 5.0 -z -0.0 -Y 3.14"/>
 
   <!-- Service call to gazebo_ros to spawn a beer can model -->
 <!--   <node pkg="gazebo_ros"
@@ -78,4 +91,12 @@
 	output="screen"
 	ns="/sevenbot"
 	args="joint_state_publisher joint1_position_controller joint2_position_controller joint3_position_controller joint4_position_controller joint5_position_controller joint6_position_controller joint7_position_controller"/>
+
+  <node pkg="controller_manager"
+  type="spawner"
+  name="controller_spawner"
+  respawn="false"
+  output="screen"
+  ns="/sevenbot2"
+  args="joint_state_publisher joint1_position_controller joint2_position_controller joint3_position_controller joint4_position_controller joint5_position_controller joint6_position_controller joint7_position_controller"/>
 </launch>
