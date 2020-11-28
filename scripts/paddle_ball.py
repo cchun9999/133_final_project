@@ -137,7 +137,7 @@ def etip(p, pd, R, Rd):
     eR = 0.5 * (cross(R[:,[0]], Rd[:,[0]]) +
                 cross(R[:,[1]], Rd[:,[1]]) +
                 cross(R[:,[2]], Rd[:,[2]]))
-    #eR = 0.5 * (cross(R[:,[1]], Rd))
+    #eR = 0.5 * (cross(R[:,[1]], Rd[:, [1]]))
     return np.vstack((ep,eR))
 
 
@@ -255,14 +255,14 @@ def get_paddle_pos():
     return paddle_pos.T
 
 def compute_transform_quaternion(vec_s, vec_t):
+    vec_s /= np.linalg.norm(vec_s)
+    vec_t /= np.linalg.norm(vec_t)
     print("(vec_s, vec_t):", vec_s.T, vec_t.T)
-    axis = np.cross(vec_t, vec_s)
+    axis = np.cross(vec_s, vec_t)
     axis /= np.linalg.norm(axis)
     angle = np.arccos(np.dot(vec_s, vec_t))
     quat = Quaternion(axis=axis, angle=angle)
     return axis.reshape((-1, 1)), quat
-
-
 
 #
 #  Main Code
@@ -370,7 +370,7 @@ if __name__ == "__main__":
         # Get the target (x, y) to hit the ball towards
         target_iters = 20
         # Set up "sprinkler" orbit for the ball
-        #target_x, target_y = get_target_xy(num_iters/target_iters * (2*np.pi))
+        # target_x, target_y = get_target_xy(num_iters/target_iters * (2*np.pi))
 
         print("paddle velocity (INITIAL):", get_paddle_velocity())
 
@@ -398,7 +398,6 @@ if __name__ == "__main__":
         paddle_hit_vel, paddle_hit_rot = get_desired_paddle_velocity(ball_vel_final, ball_vel_desired, paddle_mass, ball_mass, restitution)
         print("paddle_hit_rot:", paddle_hit_rot)
 
-
         # Compute the desired splines for each dimension of the paddle tip.
         # Use the initial tip position of p0.
         # z is forced to go between 0.6 and 0.3
@@ -408,8 +407,7 @@ if __name__ == "__main__":
         quat_axis, transform_quat = compute_transform_quaternion(R[:, 1], paddle_hit_rot.flatten())
         print("Transform quat rotation matrix:", transform_quat.rotation_matrix)
         current_quat = Quaternion(matrix=R)
-        quat_axis = current_quat.rotation_matrix @ quat_axis
-        target_R = current_quat.rotation_matrix @ transform_quat.rotation_matrix
+        target_R = transform_quat.rotation_matrix @ current_quat.rotation_matrix
         target_quat = Quaternion(matrix=target_R)
         num_intermediates = int(tf_ball/(2*dt)) + 1
         intermediate_quats = Quaternion.intermediates(current_quat, target_quat, num_intermediates, 
@@ -447,11 +445,11 @@ if __name__ == "__main__":
             # Update the joint angles.
             thetadot = weighted_inv @ vr
             # Add Secondary Task
-            # theta_center = np.array([[-np.pi/4], [-np.pi/4], [np.pi/2], [-np.pi/2], [0], [0], [0]])
-            # theta_dot_secondary = -0.5*(theta - theta_center)
-            # theta_dot_secondary = np.zeros((N, 1))
-            # theta_dot_secondary[5] = -theta[5]
-            # thetadot += (np.identity(weighted_inv.shape[0])-weighted_inv@J)@theta_dot_secondary
+            # theta_center = np.array([[-0], [-0], [0], [-0], [0], [0], [0]])
+            # theta_dot_secondary = -2*(theta - theta_center)
+            #theta_dot_secondary = np.zeros((N, 1))
+            #theta_dot_secondary[5] = -10*theta[5]
+            #thetadot += (np.identity(weighted_inv.shape[0])-weighted_inv@J)@theta_dot_secondary
             theta   += dt * thetadot
 
             # Publish and sleep for the rest of the time.  You can choose
@@ -493,11 +491,11 @@ if __name__ == "__main__":
             # Update the joint angles.
             thetadot = weighted_inv @ vr
             # Add Secondary Task
-            # theta_center = np.array([[-np.pi/4], [-np.pi/4], [np.pi/2], [-np.pi/2], [0], [0], [0]])
-            # theta_dot_secondary = -0.5*(theta - theta_center)
-            # theta_dot_secondary = np.zeros((N, 1))
-            # theta_dot_secondary[5] = -theta[5]
-            # thetadot += (np.identity(weighted_inv.shape[0])-weighted_inv@J)@theta_dot_secondary
+            # theta_center = np.array([[-0], [-0], [0], [-0], [0], [0], [0]])
+            # theta_dot_secondary = -2*(theta - theta_center)
+            #theta_dot_secondary = np.zeros((N, 1))
+            #theta_dot_secondary[5] = -10*theta[5]
+            #thetadot += (np.identity(weighted_inv.shape[0])-weighted_inv@J)@theta_dot_secondary
             theta   += dt * thetadot
             # Publish and sleep for the rest of the time.  You can choose
             # whether to show the initial "negative time convergence"....
