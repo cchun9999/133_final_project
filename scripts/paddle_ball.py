@@ -369,7 +369,8 @@ if __name__ == "__main__":
 
         # Get the target (x, y) to hit the ball towards
         target_iters = 20
-        target_x, target_y = get_target_xy(num_iters/target_iters * (2*np.pi))
+        # Set up "sprinkler" orbit for the ball
+        #target_x, target_y = get_target_xy(num_iters/target_iters * (2*np.pi))
 
         print("paddle velocity (INITIAL):", get_paddle_velocity())
 
