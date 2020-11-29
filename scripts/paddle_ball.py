@@ -463,10 +463,7 @@ if __name__ == "__main__":
         print("THETA1:", theta1.T)
         print("THETA2:", theta2.T)
         tf_default = 0.8
-
-
-        print("paddle velocity (INITIAL):", get_paddle_velocity(robot1.name))
-
+        print("=====================ROBOT1==================")
         
         ball_xf, ball_yf, tf_ball, ball_vel = robot1.compute_projected_ball_xy(intercept_height)
 
@@ -489,8 +486,11 @@ if __name__ == "__main__":
         spline_z_down = compute_spline(tf_ball/2, np.array([[z0], [paddle_vel[2]], [0.4], [0]]))
         splines = [spline_z_down, spline_x, spline_y]
 
+        # Compute rotation matrix trajectory
         intermediate_quats, target_quat = robot1.compute_intermediate_quaternions(theta1, paddle_hit_rot, tf_ball)
 
+        # Forward (Down) pass. Move the ball from z = 0.6 to z = 0.4 and go to the desired ball_xf, ball_yf. Also orient
+        # the paddle in the correct manner
         for t in np.arange(0, tf_ball/2+1e-6, dt):
             desired_rot = next(intermediate_quats).rotation_matrix
             theta1 = robot1.execute_down_motion(t, theta1, desired_rot, splines)
@@ -502,7 +502,6 @@ if __name__ == "__main__":
         # Compute the z-spline for the upwards motion. X and Y stay constant
         (p, R) = robot1.kin.fkin(theta1)
         paddle_vel = get_paddle_velocity(robot1.name)
-        print("paddle velocity in-between:", paddle_vel)
         spline_x = compute_spline(tf_ball/2, np.array([[p[0]], [paddle_vel[0]], [ball_xf], [0]]))
         spline_y = compute_spline(tf_ball/2, np.array([[p[1]], [paddle_vel[1]], [ball_yf], [0]]))
         spline_z_up = compute_spline(tf_ball/2, np.array([[p[2]], [paddle_vel[2]], [intercept_height], [0]]))
@@ -521,10 +520,8 @@ if __name__ == "__main__":
         servo.sleep()
         servo.sleep()
         ##################### Robot2 ####################
-        print("ROBOT2")
+        print("=====================ROBOT2==================")
         ball_xf, ball_yf, tf_ball, ball_vel = robot2.compute_projected_ball_xy(intercept_height)
-        print(tf_ball)
-        print(ball_xf, ball_yf)
 
         ball_vel_final = np.array([[ball_vel[0]], [ball_vel[1]], [ball_vel[2] + grav * tf_ball]])
         ball_vel_desired = np.array([[(r2_target_x - ball_xf)/t_arc], [(r2_target_y - ball_yf)/t_arc], [np.sqrt(2 * (target_max_height - intercept_height))]])
@@ -540,14 +537,16 @@ if __name__ == "__main__":
         # trajectory
         paddle_vel = get_paddle_velocity(robot2.name)
         print("paddle velocity ROBOT2:", paddle_vel)
-        print("ballxf,ballyf:", ball_xf, ball_yf)
         spline_x = compute_spline(tf_ball/2, np.array([[x0], [0], [ball_xf], [0]]))
         spline_y = compute_spline(tf_ball/2, np.array([[y0], [0], [ball_yf], [0]]))
         spline_z_down = compute_spline(tf_ball/2, np.array([[z0], [0], [0.4], [0]]))
         splines = [spline_z_down, spline_x, spline_y]
 
+        # Compute rotation matrix trajectory
         intermediate_quats, target_quat = robot2.compute_intermediate_quaternions(theta2, paddle_hit_rot, tf_ball)
 
+        # Forward (Down) pass. Move the ball from z = 0.6 to z = 0.4 and go to the desired ball_xf, ball_yf. Also orient
+        # the paddle in the correct manner
         for t in np.arange(0, tf_ball/2+1e-6, dt):
             desired_rot = next(intermediate_quats).rotation_matrix
             theta2 = robot2.execute_down_motion(t, theta2, desired_rot, splines)
@@ -572,7 +571,6 @@ if __name__ == "__main__":
             # Publish and sleep for the rest of the time.
             robot2.pub.send(theta2)
             servo.sleep()
-        print('here')
         servo.sleep()
         servo.sleep()
         servo.sleep()
