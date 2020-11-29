@@ -236,7 +236,7 @@ def change_gravity(x, y, z):
 
 # Get the current paddle velocity from Gazebo
 # Account for tip transformations
-def get_paddle_velocity():
+def get_paddle_velocity(model_state):
     paddle_state = model_state("sevenbot", "link7")
     paddle_vel_transf = np.array([paddle_state.twist.linear.x, paddle_state.twist.linear.y,
                                   paddle_state.twist.linear.z])
@@ -246,7 +246,7 @@ def get_paddle_velocity():
 
 # Get the current paddle velocity from Gazebo
 # Account for tip transformations
-def get_paddle_pos():
+def get_paddle_pos(model_state):
     paddle_state = model_state("sevenbot", "link7")
     paddle_pos_transf = np.array([paddle_state.pose.position.x, paddle_state.pose.position.y,
                                   paddle_state.pose.position.z])
@@ -264,10 +264,19 @@ def compute_transform_quaternion(vec_s, vec_t):
     quat = Quaternion(axis=axis, angle=angle)
     return axis.reshape((-1, 1)), quat
 
+def compute_final_roation(paddle_normal, ball_xf, ball_yf):
+    vec_y = paddle_normal
+    z_z = -(vec_y[0][0] * ball_xf + vec_y[1][0] * ball_yf) / vec_y[2][0]
+    vec_z = np.array([[ball_xf], [ball_yf], [z_z]])
+    vec_z = vec_z / np.linalg.norm(vec_z)
+    vec_x = cross(vec_y, vec_z)
+    return np.hstack((vec_x, vec_y, vec_z))
+
 #
 #  Main Code
 #
-if __name__ == "__main__":
+
+def main():    
     #
     #  LOGISTICAL SETUP
     #
@@ -370,9 +379,9 @@ if __name__ == "__main__":
         # Get the target (x, y) to hit the ball towards
         target_iters = 20
         # Set up "sprinkler" orbit for the ball
-        # target_x, target_y = get_target_xy(num_iters/target_iters * (2*np.pi))
+        target_x, target_y = get_target_xy(num_iters/target_iters * (2*np.pi))
 
-        print("paddle velocity (INITIAL):", get_paddle_velocity())
+        print("paddle velocity (INITIAL):", get_paddle_velocity(model_state))
 
         # Get information on the state of the ball. Use this to compute the
         # time it will take the ball to reach the z = 0.6 point so that we can
@@ -396,7 +405,6 @@ if __name__ == "__main__":
         ball_vel_final = np.array([[ball_state.twist.linear.x], [ball_state.twist.linear.y], [ball_vz + grav * tf_ball]])
         ball_vel_desired = np.array([[(target_x - ball_xf)/t_arc], [(target_y - ball_yf)/t_arc], [np.sqrt(2 * (target_max_height - intercept_height))]])
         paddle_hit_vel, paddle_hit_rot = get_desired_paddle_velocity(ball_vel_final, ball_vel_desired, paddle_mass, ball_mass, restitution)
-        print("paddle_hit_rot:", paddle_hit_rot)
 
         # Compute the desired splines for each dimension of the paddle tip.
         # Use the initial tip position of p0.
@@ -404,10 +412,11 @@ if __name__ == "__main__":
         p0, R = kin.fkin(theta)
 
         # Compute the Orientation interpolation using quaternions
-        quat_axis, transform_quat = compute_transform_quaternion(R[:, 1], paddle_hit_rot.flatten())
-        print("Transform quat rotation matrix:", transform_quat.rotation_matrix)
+        #quat_axis, transform_quat = compute_transform_quaternion(R[:, 1], paddle_hit_rot.flatten())
+        #print("Transform quat rotation matrix:", transform_quat.rotation_matrix)
         current_quat = Quaternion(matrix=R)
-        target_R = transform_quat.rotation_matrix @ current_quat.rotation_matrix
+        target_R = compute_final_roation(paddle_hit_rot, ball_xf, ball_yf)
+        print("target_R: ", target_R)
         target_quat = Quaternion(matrix=target_R)
         num_intermediates = int(tf_ball/(2*dt)) + 1
         intermediate_quats = Quaternion.intermediates(current_quat, target_quat, num_intermediates, 
@@ -417,7 +426,7 @@ if __name__ == "__main__":
         x0, y0, z0 = p0.flatten()
         # Use the current paddle velocity as initial velocity to ensure smooth
         # trajectory
-        paddle_vel = get_paddle_velocity()
+        paddle_vel = get_paddle_velocity(model_state)
         print("paddle velocity:", paddle_vel)
         spline_x = compute_spline(tf_ball/2, np.array([[x0], [paddle_vel[0]], [ball_xf], [0]]))
         spline_y = compute_spline(tf_ball/2, np.array([[y0], [paddle_vel[1]], [ball_yf], [0]]))
@@ -460,7 +469,7 @@ if __name__ == "__main__":
 
         # Compute the z-spline for the upwards motion. X and Y stay constant
         (p, R) = kin.fkin(theta)
-        paddle_vel = get_paddle_velocity()
+        paddle_vel = get_paddle_velocity(model_state)
         print("paddle velocity in-between:", paddle_vel)
         spline_z_up = compute_spline(tf_ball/2, np.array([[p[2]], [paddle_vel[2]], [intercept_height], [hit_vel]]))
         print('spline_z_up:', spline_z_up)
@@ -503,5 +512,8 @@ if __name__ == "__main__":
             pub.send(theta)
             servo.sleep()
 
-        paddle_vel = get_paddle_velocity()
+        paddle_vel = get_paddle_velocity(model_state)
         print("paddle velocity (FINAL):", paddle_vel)
+
+if __name__ == "__main__":
+    main()
