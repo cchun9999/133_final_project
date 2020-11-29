@@ -45,7 +45,7 @@ from pyquaternion import Quaternion
 #  on the /sevenbot/jointX_position/command topics (for Gazebo).
 #
 class JointCommandPublisher:
-    def __init__(self, urdfnames, controlnames, topic_root='sevevenbot'):
+    def __init__(self, urdfnames, controlnames, topic_root):
         # Make sure the name lists have equal length.
         assert len(urdfnames) == len(controlnames), "Unequal lengths"
 
@@ -65,8 +65,8 @@ class JointCommandPublisher:
             topic = "/" + topic_root +"/" + name + "/command"
             self.pubX.append(rospy.Publisher(topic, Float64, queue_size=100))
 
-        # Wait until connected.  You don't have to wait, but the first
-        # messages might go out before the connection and hence be lost.
+        # # Wait until connected.  You don't have to wait, but the first
+        # # messages might go out before the connection and hence be lost.
         # rospy.sleep(0.5)
 
         # Report.
@@ -270,12 +270,13 @@ def compute_transform_quaternion(vec_s, vec_t):
 ####
 class SevenDOFRobot:
 
-    def __init__(self, robot_description='/robot_description', robot_name='sevenbot'):
+    def __init__(self, robot_description, robot_name):
         self.urdf = rospy.get_param(robot_description)
         self.kin  = Kinematics(self.urdf, 'world', 'tip')
         self.N    = self.kin.dofs()
         rospy.loginfo("Loaded URDF for %d joints" % self.N)
         self.name = robot_name
+        print("Initializing Robot: ", robot_name)
 
         self.pub = JointCommandPublisher(('theta1', 'theta2', 'theta3', 'theta4',
                                  'theta5', 'theta6', 'theta7'),
@@ -290,6 +291,88 @@ class SevenDOFRobot:
         # Make sure the URDF and publisher agree in dimensions.
         if not self.pub.dofs() == self.kin.dofs():
             rospy.logerr("FIX Publisher to agree with URDF!")
+
+    def compute_projected_ball_xy(self, intercept_height):
+        # Get information on the state of the ball. Use this to compute the
+        # time it will take the ball to reach the z = 0.6 point so that we can
+        # plan the trajectory of the robot to hit it at the right time.
+        ball_state = model_state("ball", "link")
+        ball_vel = np.array([ball_state.twist.linear.x, ball_state.twist.linear.y, ball_state.twist.linear.z])
+        ball_z = ball_state.pose.position.z
+        ball_solns = np.roots(np.array([1/2*grav, ball_vel[2], ball_z - intercept_height]))
+        print("Ball solns:", ball_solns)
+        tf_ball = max(ball_solns)
+        if not np.isreal(tf_ball):
+            # default to tf if failed to find a root
+            print('failed to find root')
+            tf_ball = tf_default
+        print('projected tf:', tf_ball)
+
+        # Compute the projected final x, y positions of the ball
+        ball_xf = ball_state.pose.position.x + ball_vel[0] * tf_ball 
+        ball_yf = ball_state.pose.position.y + ball_vel[1] * tf_ball
+        print(f"ball projected (x,y): {ball_xf, ball_yf}")
+
+        return ball_xf, ball_yf, tf_ball, ball_vel
+
+    def compute_intermediate_quaternions(self, theta, paddle_hit_rot, tf_ball):
+        p0, R = self.kin.fkin(theta)
+        print(R)
+        # Compute the Orientation interpolation using quaternions
+        quat_axis, transform_quat = compute_transform_quaternion(R[:, 1], paddle_hit_rot.flatten())
+        print("Transform quat rotation matrix:", transform_quat.rotation_matrix)
+        current_quat = Quaternion(matrix=R)
+        target_R = transform_quat.rotation_matrix @ current_quat.rotation_matrix
+        target_quat = Quaternion(matrix=target_R)
+        num_intermediates = int(tf_ball/(2*dt)) + 1
+        intermediate_quats = Quaternion.intermediates(current_quat, target_quat, num_intermediates, 
+                                                      include_endpoints=False)
+        return intermediate_quats, target_quat
+
+    def execute_down_motion(self, t, theta, desired_rot, splines):
+        # Forward pass: Move Z of tip from 0.6 to 0.4 in the desired amount of time.
+        #for t in np.arange(0, tf_ball/2+1e-6, dt):
+        (p, R) = self.kin.fkin(theta)
+        J      = self.kin.Jac(theta)
+
+        (pd, Rd, vd, wd) = desired(t, splines[0], splines[1], splines[2])
+        Rd = desired_rot
+        # Determine the residual error.
+        e = etip(p, pd, R, Rd)
+        # Build the reference velocity.
+        vr = np.vstack((vd,wd)) + lam * e
+        # Compute the Jacbian inverse (pseudo inverse)
+        gamma = 0.04
+        weighted_inv = (np.linalg.inv(J.T@J + (gamma**2)*np.identity(N)))@J.T
+
+        # Update the joint angles.
+        thetadot = weighted_inv @ vr
+        return theta + dt*thetadot
+
+    def execute_up_motion(self, t, theta, desied_rot, splines):
+
+        (p, R) = self.kin.fkin(theta)
+        J      = self.kin.Jac(theta)
+
+        (pd, Rd, vd, wd) = desired(t, splines[0],splines[1], splines[2])
+        Rd = desired_rot
+        # Reset the x, y positions to be where the ball will land,
+        # which should be where we're at already
+        pd[0] = p[0]
+        pd[1] = p[1]
+
+        # Determine the residual error.
+        e = etip(p, pd, R, Rd)
+        # Build the reference velocity.
+        vr = np.vstack((vd,wd)) + lam * e
+        # Compute the Jacbian inverse (pseudo inverse)
+        gamma = 0.04
+        weighted_inv = (np.linalg.inv(J.T@J + (gamma**2)*np.identity(N)))@J.T
+
+        # Update the joint angles.
+        thetadot = weighted_inv @ vr
+        return theta + dt*thetadot
+
 #
 #  Main Code
 #
@@ -324,7 +407,8 @@ if __name__ == "__main__":
     # Pick an initial joint position (pretty bad initial guess, but
     # away from the worst singularities).
     #theta = np.zeros((7, 1))
-    theta = np.array([[0.0], [0.0], [0.0], [-0.05], [0.0], [0.0], [0.0]])
+    theta1 = np.array([[0.0], [0.0], [0.0], [-0.05], [0.0], [0.0], [0.0]])
+    theta2 = np.array([[0.0], [0.0], [0.0], [-0.05], [0.0], [0.0], [0.0]])
 
     intercept_height = 0.6
 
@@ -345,15 +429,17 @@ if __name__ == "__main__":
     # Test changing gravity (if uncommented with these values then the ball shouldn't move
     # during the simulation)
     #change_gravity(0,0,0)
-    target_x = 0
-    target_y = 1.0
-    # Function to return target (x,y) of ball at given time
-    get_target_xy = lambda t: (np.sin(t), np.cos(t))
-    target_max_height = 2
+    r1_target_x = 1
+    r1_target_y = 1.2
+
+    r2_target_x = 0
+    r2_target_y= 1.2
+    
+    target_max_height = 1
     t_arc = np.sqrt(-2 * target_max_height / grav)
 
     #Masses
-    ball_mass = 0.02
+    ball_mass = 0.001
     paddle_mass = 0.2
 
     #Coefficient of Restitution
@@ -374,56 +460,25 @@ if __name__ == "__main__":
         # the fkin(theta(i-1)) and the Jacobian J(theta(i-1)).
         num_iters += 1
         print("ITER #:", num_iters)
-        print("THETA:", theta.T)
+        print("THETA1:", theta1.T)
+        print("THETA2:", theta2.T)
         tf_default = 0.8
 
-        # Get the target (x, y) to hit the ball towards
-        target_iters = 20
-        # Set up "sprinkler" orbit for the ball
-        # target_x, target_y = get_target_xy(num_iters/target_iters * (2*np.pi))
 
         print("paddle velocity (INITIAL):", get_paddle_velocity(robot1.name))
 
-        # Get information on the state of the ball. Use this to compute the
-        # time it will take the ball to reach the z = 0.6 point so that we can
-        # plan the trajectory of the robot to hit it at the right time.
-        ball_state = model_state("ball", "link")
-        ball_vz, ball_z = ball_state.twist.linear.z, ball_state.pose.position.z
-        ball_solns = np.roots(np.array([1/2*grav, ball_vz, ball_z - intercept_height]))
-        tf_ball = max(ball_solns)
-        if not np.isreal(tf_ball):
-            # default to tf if failed to find a root
-            print('failed to find root')
-            tf_ball = tf_default
-        print('projected tf:', tf_ball)
+        
+        ball_xf, ball_yf, tf_ball, ball_vel = robot1.compute_projected_ball_xy(intercept_height)
 
-        # Compute the projected final x, y positions of the ball
-        ball_xf = ball_state.pose.position.x + ball_state.twist.linear.x * tf_ball 
-        ball_yf = ball_state.pose.position.y + ball_state.twist.linear.y * tf_ball
-        print(f"ball projected (x,y): {ball_xf, ball_yf}")
-
-
-        ball_vel_final = np.array([[ball_state.twist.linear.x], [ball_state.twist.linear.y], [ball_vz + grav * tf_ball]])
-        ball_vel_desired = np.array([[(target_x - ball_xf)/t_arc], [(target_y - ball_yf)/t_arc], [np.sqrt(2 * (target_max_height - intercept_height))]])
+        ball_vel_final = np.array([[ball_vel[0]], [ball_vel[1]], [ball_vel[2] + grav * tf_ball]])
+        ball_vel_desired = np.array([[(r1_target_x - ball_xf)/t_arc], [(r1_target_y - ball_yf)/t_arc], [np.sqrt(2 * (target_max_height - intercept_height))]])
         paddle_hit_vel, paddle_hit_rot = get_desired_paddle_velocity(ball_vel_final, ball_vel_desired, paddle_mass, ball_mass, restitution)
         print("paddle_hit_rot:", paddle_hit_rot)
 
         # Compute the desired splines for each dimension of the paddle tip.
         # Use the initial tip position of p0.
         # z is forced to go between 0.6 and 0.3
-        p0, R = robot1.kin.fkin(theta)
-
-        # Compute the Orientation interpolation using quaternions
-        quat_axis, transform_quat = compute_transform_quaternion(R[:, 1], paddle_hit_rot.flatten())
-        print("Transform quat rotation matrix:", transform_quat.rotation_matrix)
-        current_quat = Quaternion(matrix=R)
-        target_R = transform_quat.rotation_matrix @ current_quat.rotation_matrix
-        target_quat = Quaternion(matrix=target_R)
-        num_intermediates = int(tf_ball/(2*dt)) + 1
-        intermediate_quats = Quaternion.intermediates(current_quat, target_quat, num_intermediates, 
-                                                      include_endpoints=False)
-
-
+        p0, R = robot1.kin.fkin(theta1)
         x0, y0, z0 = p0.flatten()
         # Use the current paddle velocity as initial velocity to ensure smooth
         # trajectory
@@ -432,85 +487,93 @@ if __name__ == "__main__":
         spline_x = compute_spline(tf_ball/2, np.array([[x0], [paddle_vel[0]], [ball_xf], [0]]))
         spline_y = compute_spline(tf_ball/2, np.array([[y0], [paddle_vel[1]], [ball_yf], [0]]))
         spline_z_down = compute_spline(tf_ball/2, np.array([[z0], [paddle_vel[2]], [0.4], [0]]))
-        hit_vel = 0.0 # target velocity that the paddle should hit the ball with
+        splines = [spline_z_down, spline_x, spline_y]
 
-        
-        # Forward pass: Move Z of tip from 0.6 to 0.3 in the desired amount of time.
+        intermediate_quats, target_quat = robot1.compute_intermediate_quaternions(theta1, paddle_hit_rot, tf_ball)
+
         for t in np.arange(0, tf_ball/2+1e-6, dt):
-
-            (p, R) = robot1.kin.fkin(theta)
-            J      = robot1.kin.Jac(theta)
-
-            (pd, Rd, vd, wd) = desired(t, spline_z_down, spline_x, spline_y)
-            Rd = next(intermediate_quats).rotation_matrix
-            # Determine the residual error.
-            e = etip(p, pd, R, Rd)
-            # Build the reference velocity.
-            vr = np.vstack((vd,wd)) + lam * e
-            # Compute the Jacbian inverse (pseudo inverse)
-            #Jpinv = np.linalg.pinv(J)
-            gamma = 0.04
-            weighted_inv = (np.linalg.inv(J.T@J + (gamma**2)*np.identity(N)))@J.T
-
-            # Update the joint angles.
-            thetadot = weighted_inv @ vr
-            # Add Secondary Task
-            # theta_center = np.array([[-0], [-0], [0], [-0], [0], [0], [0]])
-            # theta_dot_secondary = -2*(theta - theta_center)
-            #theta_dot_secondary = np.zeros((N, 1))
-            #theta_dot_secondary[5] = -10*theta[5]
-            #thetadot += (np.identity(weighted_inv.shape[0])-weighted_inv@J)@theta_dot_secondary
-            theta   += dt * thetadot
-
-            # Publish and sleep for the rest of the time.  You can choose
-            # whether to show the initial "negative time convergence"....
-            # if not t<0:
-            robot1.pub.send(theta)
-            robot2.pub.send(theta)
+            desired_rot = next(intermediate_quats).rotation_matrix
+            theta1 = robot1.execute_down_motion(t, theta1, desired_rot, splines)
+            # Publish and sleep for the rest of the time.
+            robot1.pub.send(theta1)
             servo.sleep()
+        
 
         # Compute the z-spline for the upwards motion. X and Y stay constant
-        (p, R) = robot1.kin.fkin(theta)
+        (p, R) = robot1.kin.fkin(theta1)
         paddle_vel = get_paddle_velocity(robot1.name)
         print("paddle velocity in-between:", paddle_vel)
-        spline_z_up = compute_spline(tf_ball/2, np.array([[p[2]], [paddle_vel[2]], [intercept_height], [hit_vel]]))
+        spline_x = compute_spline(tf_ball/2, np.array([[p[0]], [paddle_vel[0]], [ball_xf], [0]]))
+        spline_y = compute_spline(tf_ball/2, np.array([[p[1]], [paddle_vel[1]], [ball_yf], [0]]))
+        spline_z_up = compute_spline(tf_ball/2, np.array([[p[2]], [paddle_vel[2]], [intercept_height], [0]]))
         print('spline_z_up:', spline_z_up)
 
         # Backward (Up) pass: Move the paddle back up to original z, ending with a hit of the ball.
         # Don't change x or y since they should already be in the target orientation.
         for t in np.arange(0, tf_ball/2 +1e-6, dt):
-            (p, R) = robot1.kin.fkin(theta)
-            J      = robot1.kin.Jac(theta)
-
-            (pd, Rd, vd, wd) = desired(t, spline_z_up)
-            Rd = target_quat.rotation_matrix
-            #Rd = R
-            # Reset the x, y positions to be where the ball will land,
-            # which should be where we're at already
-            pd[0] = p[0]
-            pd[1] = p[1]
-
-            # Determine the residual error.
-            e = etip(p, pd, R, Rd)
-            # Build the reference velocity.
-            vr = np.vstack((vd,wd)) + lam * e
-            # Compute the Jacbian inverse (pseudo inverse)
-            # Jpinv = np.linalg.pinv(J)
-            gamma = 0.04
-            weighted_inv = (np.linalg.inv(J.T@J + (gamma**2)*np.identity(N)))@J.T
-
-            # Update the joint angles.
-            thetadot = weighted_inv @ vr
-            # Add Secondary Task
-            # theta_center = np.array([[-0], [-0], [0], [-0], [0], [0], [0]])
-            # theta_dot_secondary = -2*(theta - theta_center)
-            #theta_dot_secondary = np.zeros((N, 1))
-            #theta_dot_secondary[5] = -10*theta[5]
-            #thetadot += (np.identity(weighted_inv.shape[0])-weighted_inv@J)@theta_dot_secondary
-            theta   += dt * thetadot
-            # Publish and sleep for the rest of the time.  You can choose
-            # whether to show the initial "negative time convergence"....
-            # if not t<0:
-            robot1.pub.send(theta)
-            robot2.pub.send(theta)
+            theta1 = robot1.execute_up_motion(t, theta1, target_quat.rotation_matrix, [spline_z_up, spline_x, spline_y])
+            # Publish and sleep for the rest of the time.
+            robot1.pub.send(theta1)
             servo.sleep()
+
+        servo.sleep()
+        servo.sleep()
+        servo.sleep()
+        servo.sleep()
+        ##################### Robot2 ####################
+        print("ROBOT2")
+        ball_xf, ball_yf, tf_ball, ball_vel = robot2.compute_projected_ball_xy(intercept_height)
+        print(tf_ball)
+        print(ball_xf, ball_yf)
+
+        ball_vel_final = np.array([[ball_vel[0]], [ball_vel[1]], [ball_vel[2] + grav * tf_ball]])
+        ball_vel_desired = np.array([[(r2_target_x - ball_xf)/t_arc], [(r2_target_y - ball_yf)/t_arc], [np.sqrt(2 * (target_max_height - intercept_height))]])
+        paddle_hit_vel, paddle_hit_rot = get_desired_paddle_velocity(ball_vel_final, ball_vel_desired, paddle_mass, ball_mass, restitution)
+        print("paddle_hit_rot:", paddle_hit_rot)
+
+        # Compute the desired splines for each dimension of the paddle tip.
+        # Use the initial tip position of p0.
+        # z is forced to go between 0.6 and 0.3
+        p0, R = robot2.kin.fkin(theta2)
+        x0, y0, z0 = p0.flatten()
+        # Use the current paddle velocity as initial velocity to ensure smooth
+        # trajectory
+        paddle_vel = get_paddle_velocity(robot2.name)
+        print("paddle velocity ROBOT2:", paddle_vel)
+        print("ballxf,ballyf:", ball_xf, ball_yf)
+        spline_x = compute_spline(tf_ball/2, np.array([[x0], [0], [ball_xf], [0]]))
+        spline_y = compute_spline(tf_ball/2, np.array([[y0], [0], [ball_yf], [0]]))
+        spline_z_down = compute_spline(tf_ball/2, np.array([[z0], [0], [0.4], [0]]))
+        splines = [spline_z_down, spline_x, spline_y]
+
+        intermediate_quats, target_quat = robot2.compute_intermediate_quaternions(theta2, paddle_hit_rot, tf_ball)
+
+        for t in np.arange(0, tf_ball/2+1e-6, dt):
+            desired_rot = next(intermediate_quats).rotation_matrix
+            theta2 = robot2.execute_down_motion(t, theta2, desired_rot, splines)
+            # Publish and sleep for the rest of the time.
+            robot2.pub.send(theta2)
+            servo.sleep()
+        
+
+        # Compute the z-spline for the upwards motion. X and Y stay constant
+        (p, R) = robot2.kin.fkin(theta2)
+        paddle_vel = get_paddle_velocity(robot2.name)
+        print("paddle velocity in-between:", paddle_vel)
+        spline_x = compute_spline(tf_ball/2, np.array([[p[0]], [paddle_vel[0]], [ball_xf], [0]]))
+        spline_y = compute_spline(tf_ball/2, np.array([[p[1]], [paddle_vel[1]], [ball_yf], [0]]))
+        spline_z_up = compute_spline(tf_ball/2, np.array([[p[2]], [paddle_vel[2]], [intercept_height], [0]]))
+        print('spline_z_up:', spline_z_up)
+
+        # Backward (Up) pass: Move the paddle back up to original z, ending with a hit of the ball.
+        # Don't change x or y since they should already be in the target orientation.
+        for t in np.arange(0, tf_ball/2 +1e-6, dt):
+            theta2 = robot2.execute_up_motion(t, theta2, target_quat.rotation_matrix, [spline_z_up, spline_x, spline_y])
+            # Publish and sleep for the rest of the time.
+            robot2.pub.send(theta2)
+            servo.sleep()
+        print('here')
+        servo.sleep()
+        servo.sleep()
+        servo.sleep()
+        servo.sleep()
