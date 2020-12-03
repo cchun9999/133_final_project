@@ -5,8 +5,11 @@
   <arg name="model" default="$(find gazebodemos)/urdf/seveneffort2.urdf"/>
   <arg name="model_sdf" default="$(find gazebodemos)/models/seveneffort_new.sdf"/>
 
-  <arg name="model2" default="$(find gazebodemos)/urdf/seveneffort2_clone.urdf"/>
-  <arg name="model2_sdf" default="$(find gazebodemos)/models/seveneffort_new_clone.sdf"/>
+  <arg name="model2" default="$(find gazebodemos)/urdf/seveneffort2_r2.urdf"/>
+  <arg name="model2_sdf" default="$(find gazebodemos)/models/seveneffort_new_r2.sdf"/>
+
+  <arg name="model3" default="$(find gazebodemos)/urdf/seveneffort2_r3.urdf"/>
+  <arg name="model3_sdf" default="$(find gazebodemos)/models/seveneffort_new_r3.sdf"/>
 
   <!-- The control parameters, stored in the YAML file.  -->
   <arg name="control_parameters"
@@ -28,6 +31,9 @@
 
   <param name="robot_description2" textfile="$(arg model2)"/>
   <param name="robot_description_sdf2" textfile="$(arg model2_sdf)"/>
+
+  <param name="robot_description3" textfile="$(arg model3)"/>
+  <param name="robot_description_sdf3" textfile="$(arg model3_sdf)"/>
 
   <!-- Load the controller parameters -->
   <rosparam command="load" file="$(arg control_parameters)"/>
@@ -52,12 +58,19 @@
 	output="screen"
 	args="-sdf -model sevenbot -param robot_description_sdf"/>
 
-  <node pkg="gazebo_ros"
+<!--   <node pkg="gazebo_ros"
   type="spawn_model"
   name="robot_spawner2"
   respawn="false"
   output="screen"
-  args="-sdf -model sevenbot2 -param robot_description_sdf2 -x 0.0 -y 0 -z -0.0"/>
+  args="-sdf -model sevenbot2 -param robot_description_sdf2 -x 0.0 -y 0 -z -0.0"/> -->
+
+  <node pkg="gazebo_ros"
+  type="spawn_model"
+  name="robot_spawner3"
+  respawn="false"
+  output="screen"
+  args="-sdf -model sevenbot3 -param robot_description_sdf3 -x 0.0 -y 0 -z -0.0"/>
 
   
 
@@ -100,5 +113,14 @@
   respawn="false"
   output="screen"
   ns="/sevenbot2"
+  args="joint_state_publisher joint1_position_controller joint2_position_controller joint3_position_controller joint4_position_controller joint5_position_controller joint6_position_controller joint7_position_controller"/>
+
+
+  <node pkg="controller_manager"
+  type="spawner"
+  name="controller_spawner3"
+  respawn="false"
+  output="screen"
+  ns="/sevenbot3"
   args="joint_state_publisher joint1_position_controller joint2_position_controller joint3_position_controller joint4_position_controller joint5_position_controller joint6_position_controller joint7_position_controller"/>
 </launch>
