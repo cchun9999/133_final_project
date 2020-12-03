@@ -2,7 +2,7 @@
 <sdf version='1.7'>
   <model name='sevenbot2'>
     <joint name='attach-motor1' type='fixed'>
-      <pose relative_to='__model__'>2.0 0 0 0 -0 0</pose>
+      <pose relative_to='__model__'>1.5 0 0 0 -0 0</pose>
       <parent>world</parent>
       <child>motor1</child>
     </joint>
@@ -39,7 +39,7 @@
       <velocity_decay/>
     </link>
     <joint name='attach-mount1' type='fixed'>
-      <pose relative_to='__model__'>2.0 0 0 0 -0 0</pose>
+      <pose relative_to='__model__'>1.5 0 0 0 -0 0</pose>
       <parent>world</parent>
       <child>mount1</child>
     </joint>
@@ -76,7 +76,7 @@
       <velocity_decay/>
     </link>
     <joint name='theta1' type='revolute'>
-      <pose relative_to='__model__'>2.0 0 0.6 0 -0 0</pose>
+      <pose relative_to='__model__'>1.5 0 0.6 0 -0 0</pose>
       <parent>world</parent>
       <child>link1</child>
       <axis>

@@ -58,12 +58,12 @@
 	output="screen"
 	args="-sdf -model sevenbot -param robot_description_sdf"/>
 
-<!--   <node pkg="gazebo_ros"
+  <node pkg="gazebo_ros"
   type="spawn_model"
   name="robot_spawner2"
   respawn="false"
   output="screen"
-  args="-sdf -model sevenbot2 -param robot_description_sdf2 -x 0.0 -y 0 -z -0.0"/> -->
+  args="-sdf -model sevenbot2 -param robot_description_sdf2 -x 0.0 -y 0 -z -0.0"/>
 
   <node pkg="gazebo_ros"
   type="spawn_model"
