@@ -293,13 +293,15 @@ class SevenDOFRobot:
         if not self.pub.dofs() == self.kin.dofs():
             rospy.logerr("FIX Publisher to agree with URDF!")
 
-    def compute_projected_ball_xy(self, intercept_height):
+    def compute_projected_ball_xy(self, intercept_height, ball_obj):
         # Get information on the state of the ball. Use this to compute the
         # time it will take the ball to reach the z = 0.6 point so that we can
         # plan the trajectory of the robot to hit it at the right time.
-        ball_state = model_state("ball", "link")
-        ball_vel = np.array([ball_state.twist.linear.x, ball_state.twist.linear.y, ball_state.twist.linear.z])
-        ball_z = ball_state.pose.position.z
+        ball_vel = ball_obj.get_velocity()
+        ball_z = ball_obj.get_position()[2]
+
+        # print("BALL POSITION: ", ball_obj.get_position().T)
+        # print("BALL VELOCITY: ", ball_obj.get_velocity().T)
         ball_solns = np.roots(np.array([1/2*grav, ball_vel[2], ball_z - intercept_height]))
         print("Ball solns:", ball_solns)
         tf_ball = max(ball_solns)
@@ -310,8 +312,8 @@ class SevenDOFRobot:
         print('projected tf:', tf_ball)
 
         # Compute the projected final x, y positions of the ball
-        ball_xf = ball_state.pose.position.x + ball_vel[0] * tf_ball 
-        ball_yf = ball_state.pose.position.y + ball_vel[1] * tf_ball
+        ball_xf = ball_obj.get_position()[0] + ball_vel[0] * tf_ball 
+        ball_yf = ball_obj.get_position()[1] + ball_vel[1] * tf_ball
         print(f"ball projected (x,y): {ball_xf, ball_yf}")
 
         return ball_xf, ball_yf, tf_ball, ball_vel
@@ -374,9 +376,29 @@ class SevenDOFRobot:
         thetadot = weighted_inv @ vr
         return theta + dt*thetadot
 
-def run(robot, theta, target, ret):
+class Ball:
 
-    ball_xf, ball_yf, tf_ball, ball_vel = robot.compute_projected_ball_xy(intercept_height)
+    def __init__(self, model_state, name, link):
+        # Get a model state service proxy to be able to query state of the balls
+        self.model_state = model_state
+        self.name = name
+        self.link = link
+
+    def get_velocity(self):
+        ball_state = self.model_state(self.name, self.link)
+        ball_vel = np.array([ball_state.twist.linear.x, ball_state.twist.linear.y, ball_state.twist.linear.z])
+        return ball_vel
+
+    def get_position(self):
+        ball_state = self.model_state(self.name, self.link)
+        ball_pos = np.array([ball_state.pose.position.x, ball_state.pose.position.y, ball_state.pose.position.z])
+        return ball_pos
+
+
+
+def run(robot, theta, target, ball_obj, ret):
+
+    ball_xf, ball_yf, tf_ball, ball_vel = robot.compute_projected_ball_xy(intercept_height, ball_obj)
 
     ball_vel_final = np.array([[ball_vel[0]], [ball_vel[1]], [ball_vel[2] + grav * tf_ball]])
     ball_vel_desired = np.array([[(target[0] - ball_xf)/t_arc], [(target[1] - ball_yf)/t_arc], [np.sqrt(2 * (target_max_height - intercept_height))]])
@@ -485,6 +507,8 @@ if __name__ == "__main__":
 
     # Get a model state service proxy to be able to query state of the ball
     model_state = rospy.ServiceProxy('/gazebo/get_model_state', GetModelState)
+    ball1_obj = Ball(model_state, "ball", "link")
+    ball2_obj = Ball(model_state, "ball2", "link")
 
     # Get the gravity constant from gazebo
     physics = rospy.ServiceProxy('/gazebo/get_physics_properties', GetPhysicsProperties)
@@ -493,23 +517,20 @@ if __name__ == "__main__":
     # Test changing gravity (if uncommented with these values then the ball shouldn't move
     # during the simulation)
     #change_gravity(0,0,0)
-    r1_target_x = 1
-    r1_target_y = 1.2
+    r1_target_x = 2
+    r1_target_y = 1.25
 
-    r2_target_x = 3.7
-    r2_target_y= 1.2
+    r2_target_x = 1.0
+    r2_target_y= 2
 
-    r3_target_x = 2.2
-    r3_target_y = 1.2
+    r3_target_x = 0
+    r3_target_y = 1.25
 
-    r4_target_x = -0.7
-    r4_target_y = 1.2
+    targets = [(r1_target_x, r1_target_y), (r2_target_x, r2_target_y), (r3_target_x, r3_target_y)]
+    # r4_target_x = -0.7
+    # r4_target_y = 1.2
 
-
-
-    
-    
-    target_max_height = 1
+    target_max_height = 1.0
     t_arc = np.sqrt(-2 * target_max_height / grav)
 
     #Masses
@@ -519,7 +540,16 @@ if __name__ == "__main__":
     #Coefficient of Restitution
     restitution = 1
 
-    scale = 2
+    scale = 100
+
+    def get_active_robots(iter_num):
+        if (iter_num % 3 == 0):
+            return 0, 1
+        elif (iter_num % 3 == 1):
+            return 1, 2
+        else:
+            return 2, 0
+
 
     #
     #  TIME LOOP
@@ -530,48 +560,65 @@ if __name__ == "__main__":
     lam =  0.1/dt
     num_iters = 0
     threads = []
+    robots = [robot1, robot2, robot3]
+    thetas = [theta1, theta2, theta3]
     while not rospy.is_shutdown():
         # Using the result theta(i-1) of the last cycle (i-1): Compute
         # the fkin(theta(i-1)) and the Jacobian J(theta(i-1)).
-        num_iters += 1
         print("ITER #:", num_iters)
         print("THETA1:", theta1.T)
         print("THETA2:", theta2.T)
         tf_default = 0.8
         print("=====================ROBOT1==================")
+
+        r1_idx, r2_idx = get_active_robots(num_iters)
         
         ret = []
-        t1 = threading.Thread(target=run, args=(robot1, theta1, [r1_target_x, r1_target_y], ret))
-        threads.append(t1)
+        t1 = threading.Thread(target=run, args=(robots[r1_idx], thetas[r1_idx], targets[r1_idx], ball1_obj, ret))
         t1.start()
+        ret2 = []
+        t2 = threading.Thread(target=run, args=(robots[r2_idx], thetas[r2_idx], targets[r2_idx], ball2_obj, ret2))
+        t2.start()
         t1.join()
-        theta1 = np.array(ret)
+        t2.join()
+        thetas[r1_idx] = np.array(ret)
+        thetas[r2_idx] = np.array(ret2)
+
+        num_iters += 1
 
 
         ##################### Robot2 ####################
         print("=====================ROBOT2==================")
         
+        r1_idx, r2_idx = get_active_robots(num_iters)
+        
         ret = []
-        t2 = threading.Thread(target=run, args=(robot2, theta2, [r2_target_x, r2_target_y], ret))
-        threads.append(t2)
+        t1 = threading.Thread(target=run, args=(robots[r1_idx], thetas[r1_idx], targets[r1_idx], ball1_obj, ret))
+        t1.start()
+        ret2 = []
+        t2 = threading.Thread(target=run, args=(robots[r2_idx], thetas[r2_idx], targets[r2_idx], ball2_obj, ret2))
         t2.start()
+        t1.join()
         t2.join()
-        theta2 = np.array(ret)
+        thetas[r1_idx] = np.array(ret)
+        thetas[r2_idx] = np.array(ret2)
+
+        num_iters += 1
+
 
         ##################### Robot3 ####################
         print("=====================ROBOT3==================")
+        r1_idx, r2_idx = get_active_robots(num_iters)
+        
         ret = []
-        t3 = threading.Thread(target=run, args=(robot3, theta3, [r3_target_x, r3_target_y], ret))
-        threads.append(t3)
-        t3.start()
-        t3.join()
-        theta3 = np.array(ret)
+        t1 = threading.Thread(target=run, args=(robots[r1_idx], thetas[r1_idx], targets[r1_idx], ball1_obj, ret))
+        t1.start()
+        ret2 = []
+        t2 = threading.Thread(target=run, args=(robots[r2_idx], thetas[r2_idx], targets[r2_idx], ball2_obj, ret2))
+        t2.start()
+        t1.join()
+        t2.join()
+        thetas[r1_idx] = np.array(ret)
+        thetas[r2_idx] = np.array(ret2)
 
-        ##################### Robot2 ####################
-        print("=====================ROBOT2==================")
-        ret = []
-        t4 = threading.Thread(target=run, args=(robot2, theta2, [r4_target_x, r4_target_y], ret))
-        threads.append(t4)
-        t4.start()
-        t4.join()
-        theta2 = np.array(ret)
+        num_iters += 1

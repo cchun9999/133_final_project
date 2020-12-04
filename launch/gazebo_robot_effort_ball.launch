@@ -8,8 +8,8 @@
   <arg name="model2" default="$(find gazebodemos)/urdf/seveneffort2_r2.urdf"/>
   <arg name="model2_sdf" default="$(find gazebodemos)/models/seveneffort_new_r2.sdf"/>
 
-  <arg name="model3" default="$(find gazebodemos)/urdf/seveneffort2_r3.urdf"/>
-  <arg name="model3_sdf" default="$(find gazebodemos)/models/seveneffort_new_r3.sdf"/>
+  <arg name="model3" default="$(find gazebodemos)/urdf/seveneffort2_across.urdf"/>
+  <arg name="model3_sdf" default="$(find gazebodemos)/models/seveneffort_new_across.sdf"/>
 
   <!-- The control parameters, stored in the YAML file.  -->
   <arg name="control_parameters"
@@ -96,6 +96,13 @@
   respawn="false"
   output="screen"
   args="-sdf -model ball -file $(find gazebodemos)/models/unit_sphere/model.sdf -x 0 -y 1.25 -z 1.8"/>
+
+  <node pkg="gazebo_ros"
+  type="spawn_model"
+  name="ball_spawner2"
+  respawn="false"
+  output="screen"
+  args="-sdf -model ball2 -file $(find gazebodemos)/models/unit_sphere/model2.sdf -x 2 -y 1.25 -z 1.8"/>
 
 
   <!-- Load the controllers. -->
