@@ -1,6 +1,6 @@
 <?xml version='1.0'?>
 <sdf version='1.7'>
-  <model name='sevenbot'>
+  <model name='sevenbot2'>
     <joint name='attach-motor1' type='fixed'>
       <pose relative_to='__model__'>0 0 0 0 -0 0</pose>
       <parent>world</parent>
@@ -580,7 +580,7 @@
         </geometry>
         <material>
           <script>
-            <name>Gazebo/Red</name>
+            <name>Gazebo/Black</name>
             <uri>file://media/materials/scripts/gazebo.material</uri>
           </script>
         </material>
@@ -593,7 +593,7 @@
     </link>
     <static>0</static>
     <plugin name='gazebo_ros_control' filename='libgazebo_ros_control.so'>
-      <robotNamespace>/sevenbot</robotNamespace>
+      <robotNamespace>/sevenbot2</robotNamespace>
       <robotSimType>gazebo_ros_control/DefaultRobotHWSim</robotSimType>
     </plugin>
   </model>

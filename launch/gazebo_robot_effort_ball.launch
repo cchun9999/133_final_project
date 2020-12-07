@@ -5,6 +5,9 @@
   <arg name="model" default="$(find gazebodemos)/urdf/seveneffort2.urdf"/>
   <arg name="model_sdf" default="$(find gazebodemos)/models/seveneffort_new.sdf"/>
 
+  <arg name="2nd_model" default="$(find gazebodemos)/urdf/2nd_seveneffort2.urdf"/>
+  <arg name="2nd_model_sdf" default="$(find gazebodemos)/models/2nd_seveneffort_new.sdf"/>
+
   <!-- The control parameters, stored in the YAML file.  -->
   <arg name="control_parameters"
        default="$(find gazebodemos)/config/sevenbot_control_parameters.yaml"/>
@@ -22,6 +25,9 @@
   <!-- Load the URDF into the ROS Parameter Server -->
   <param name="robot_description" textfile="$(arg model)"/>
   <param name="robot_description_sdf" textfile="$(arg model_sdf)"/>
+
+  <param name="2nd_robot_description" textfile="$(arg 2nd_model)"/>
+  <param name="2nd_robot_description_sdf" textfile="$(arg 2nd_model_sdf)"/>
 
   <!-- Load the controller parameters -->
   <rosparam command="load" file="$(arg control_parameters)"/>
@@ -46,22 +52,23 @@
 	output="screen"
 	args="-sdf -model sevenbot -param robot_description_sdf"/>
 
-  <!-- Service call to gazebo_ros to spawn a beer can model -->
-<!--   <node pkg="gazebo_ros"
-	type="spawn_model"
-	name="beer_spawner"
-	respawn="false"
-	output="screen"
-	args="-sdf -model beercan -database beer -x 0.0 -y 0.5 -z 0"/>
-
-  Service call to gazebo_ros to spawn a tetherball model
+  <!-- Service call to gazebo_ros to spawn a 2nd URDF robot -->
   <node pkg="gazebo_ros"
 	type="spawn_model"
-	name="tehterball_spawner"
+	name="robot_spawner2"
 	respawn="false"
 	output="screen"
-	args="-sdf -model tetherball -file $(find gazebodemos)/models/tetherball/model.sdf -x -0.2 -y 0.5 -z 1.2"/> -->
+	args="-sdf -model sevenbot2 -param 2nd_robot_description_sdf -x 4.0"/>
 
+  <!-- Service call to gazebo_ros to spawn a table model -->
+  <node pkg="gazebo_ros"
+	type="spawn_model"
+	name="table_spawner"
+	respawn="false"
+	output="screen"
+	args="-sdf -model table -file $(find gazebodemos)/models/table/model.sdf -x 2.0 -y 1.0 -z 0"/> -->
+
+  <!-- Service call to gazebo_ros to spawn a ball model -->
   <node pkg="gazebo_ros"
   type="spawn_model"
   name="ball_spawner"
@@ -78,4 +85,15 @@
 	output="screen"
 	ns="/sevenbot"
 	args="joint_state_publisher joint1_position_controller joint2_position_controller joint3_position_controller joint4_position_controller joint5_position_controller joint6_position_controller joint7_position_controller"/>
+
+<!-- Load the controllers. -->
+  <node pkg="controller_manager"
+	type="spawner"
+	name="controller_spawner2"
+	respawn="false"
+	output="screen"
+	ns="/sevenbot2"
+	args="joint_state_publisher joint1_position_controller joint2_position_controller joint3_position_controller joint4_position_controller joint5_position_controller joint6_position_controller joint7_position_controller"/>
+
+
 </launch>
