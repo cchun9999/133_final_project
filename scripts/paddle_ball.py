@@ -347,7 +347,8 @@ def main():
     target_y = 1
 
     # Function to return target (x,y) of ball at given time
-    get_target_xy = lambda t: (np.sin(t), np.cos(t))
+    get_target_xy = lambda t: (1.5 * np.sin(t), 1.5 * np.cos(t))
+    
     target_max_height = 3
     max_height_vel = np.sqrt(-2 * grav * (target_max_height - intercept_height))
     print("max_height_vel", max_height_vel)
@@ -356,21 +357,27 @@ def main():
     print("t_arc:", t_arc)
 
     #Masses
-    ball_mass = 0.02
+    ball_mass = 0.0002
     paddle_mass = 0.2
 
     #Coefficient of Restitution
-    restitution = 1
+    restitution = 1.0
 
-    windup_ratio = 0.3
+    windup_ratio = 0.4
     gamma = 1e-4
 
-    pullback_ratio = 0.15
+    pullback_ratio = 0.1
     
     z_vel_array = []
     max_height_array = []
     ball_vel_desired = np.array([[0], [0], [0]])
-    t_follow = 0.04
+    t_follow = 0.15
+
+    correction_angle = -0/15 * np.pi / 180
+    correction_matrix = Rx(correction_angle)
+
+    # Get the target (x, y) to hit the ball towards
+    target_iters = 10
     #
     #  TIME LOOP
     #
@@ -388,11 +395,10 @@ def main():
         
         tf_default = 0.8
 
-        # Get the target (x, y) to hit the ball towards
-        target_iters = 20
+        
 
         # Set up "sprinkler" orbit for the ball, Comment out for constant position
-        #target_x, target_y = get_target_xy(num_iters/target_iters * (2*np.pi))
+        target_x, target_y = get_target_xy(num_iters/target_iters * (2*np.pi))
 
         # Get information on the state of the ball. Use this to compute the
         # time it will take the ball to reach the z = 0.6 point so that we can
@@ -436,7 +442,7 @@ def main():
         current_quat = Quaternion(matrix=R)
         target_R = compute_final_roation(paddle_hit_rot, ball_xf, ball_yf)
         target_quat = Quaternion(matrix=target_R)
-        num_intermediates = int(t_windup / dt) + 1
+        num_intermediates = int(t_windup / dt)
         intermediate_quats = Quaternion.intermediates(current_quat, target_quat, num_intermediates, 
                                                       include_endpoints=False)
 
@@ -454,7 +460,7 @@ def main():
 
         
         # Forward pass: Move Z of tip from 0.6 to 0.3 in the desired amount of time.
-        for t in np.arange(0, t_windup, dt):
+        for t in np.arange(dt, t_windup, dt):
 
             (p, R) = kin.fkin(theta)
             J      = kin.Jac(theta)
@@ -472,12 +478,14 @@ def main():
 
             # Update the joint angles.
             thetadot = weighted_inv @ vr
+
             # Add Secondary Task
-            # theta_center = np.array([[-0], [-0], [0], [-0], [0], [0], [0]])
-            # theta_dot_secondary = -2*(theta - theta_center)
-            #theta_dot_secondary = np.zeros((N, 1))
-            #theta_dot_secondary[5] = -10*theta[5]
-            #thetadot += (np.identity(weighted_inv.shape[0])-weighted_inv@J)@theta_dot_secondary
+            #theta_center = np.array([[-0], [-0], [0], [-0], [0], [0], [0]])
+            #heta_dot_secondary = -(theta - theta_center)
+            theta_dot_secondary = np.zeros((N, 1))
+            theta_dot_secondary[2] = -theta[2]
+            theta_dot_secondary[3] = -theta[3]
+            thetadot += (np.identity(weighted_inv.shape[0])-weighted_inv@J)@theta_dot_secondary
             theta   += dt * thetadot
 
             # Publish and sleep for the rest of the time.  You can choose
@@ -498,7 +506,7 @@ def main():
 
         # Backward (Up) pass: Move the paddle back up to original z, ending with a hit of the ball.
         # Don't change x or y since they should already be in the target orientation.
-        for t in np.arange(0, t_hit, dt):
+        for t in np.arange(dt, t_hit, dt):
             (p, R) = kin.fkin(theta)
             J      = kin.Jac(theta)
 
@@ -516,11 +524,12 @@ def main():
             # Update the joint angles.
             thetadot = weighted_inv @ vr
             # Add Secondary Task
-            # theta_center = np.array([[-0], [-0], [0], [-0], [0], [0], [0]])
-            # theta_dot_secondary = -2*(theta - theta_center)
-            #theta_dot_secondary = np.zeros((N, 1))
-            #theta_dot_secondary[5] = -10*theta[5]
-            #thetadot += (np.identity(weighted_inv.shape[0])-weighted_inv@J)@theta_dot_secondary
+            #theta_center = np.array([[-0], [-0], [0], [-0], [0], [0], [0]])
+            #theta_dot_secondary = -(theta - theta_center)
+            theta_dot_secondary = np.zeros((N, 1))
+            theta_dot_secondary[2] = -theta[2]
+            theta_dot_secondary[3] = -theta[3]
+            thetadot += (np.identity(weighted_inv.shape[0])-weighted_inv@J)@theta_dot_secondary
             theta   += dt * thetadot
             # Publish and sleep for the rest of the time.  You can choose
             # whether to show the initial "negative time convergence"....
@@ -531,7 +540,9 @@ def main():
             pub.send(theta)
             servo.sleep()
 
-        # Compute the z-spline for the upwards motion. X and Y stay constant
+
+        '''
+        # Follow through pass
         p, R = kin.fkin(theta)
         paddle_vel = get_paddle_velocity(model_state)
         follow_pos = 1/2 * t_follow * paddle_hit_vel + p
@@ -539,7 +550,7 @@ def main():
         spline_y = compute_spline(t_follow, np.array([p[1], [paddle_vel[1]], follow_pos[1], [0]]))
         spline_z = compute_spline(t_follow, np.array([p[2], [paddle_vel[2]], follow_pos[2], [0]]))
 
-        for t in np.arange(0, t_follow, dt):
+        for t in np.arange(dt, t_follow, dt):
             (p, R) = kin.fkin(theta)
             J      = kin.Jac(theta)
 
@@ -557,11 +568,12 @@ def main():
             # Update the joint angles.
             thetadot = weighted_inv @ vr
             # Add Secondary Task
-            # theta_center = np.array([[-0], [-0], [0], [-0], [0], [0], [0]])
-            # theta_dot_secondary = -2*(theta - theta_center)
-            #theta_dot_secondary = np.zeros((N, 1))
-            #theta_dot_secondary[5] = -10*theta[5]
-            #thetadot += (np.identity(weighted_inv.shape[0])-weighted_inv@J)@theta_dot_secondary
+            #theta_center = np.array([[-0], [-0], [0], [-0], [0], [0], [0]])
+            #theta_dot_secondary = -(theta - theta_center)
+            theta_dot_secondary = np.zeros((N, 1))
+            theta_dot_secondary[2] = -theta[2]
+            theta_dot_secondary[3] = -theta[3]
+            thetadot += (np.identity(weighted_inv.shape[0])-weighted_inv@J)@theta_dot_secondary
             theta   += dt * thetadot
             # Publish and sleep for the rest of the time.  You can choose
             # whether to show the initial "negative time convergence"....
@@ -571,6 +583,7 @@ def main():
             #z_array.append(ball_state.pose.position.z)
             pub.send(theta)
             servo.sleep()
+        '''
 
 if __name__ == "__main__":
     main()

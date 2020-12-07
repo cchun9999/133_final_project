@@ -4,7 +4,7 @@
     <pose>0 0 0 0 0 0</pose>
     <link name="link">
       <inertial>
-        <mass>.02</mass>
+        <mass>.0002</mass>
         <inertia>
           <ixx>0.004</ixx>
           <iyy>0.004</iyy>
