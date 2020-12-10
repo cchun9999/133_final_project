@@ -409,6 +409,7 @@ def main():
         actual = np.array([[ball_state.twist.linear.x], [ball_state.twist.linear.y], [ball_state.twist.linear.z]])
         print("ball_vel_desired", ball_vel_desired)
         print("velocity actual - desired:", actual - ball_vel_desired)
+        print("velocity %% error:", np.linalg.norm(actual - ball_vel_desired)/ np.linalg.norm(actual))
 
 
 
@@ -432,12 +433,6 @@ def main():
         ball_xf = ball_state.pose.position.x + ball_state.twist.linear.x * tf_ball 
         ball_yf = ball_state.pose.position.y + ball_state.twist.linear.y * tf_ball
         ball_posf = np.array([[ball_xf], [ball_yf], [intercept_height]])
-
-        print("target_x:", target_x)
-        print("target_y:", target_y)
-
-        print("ball_xf:", ball_xf)
-        print("ball_yf:", ball_yf)
 
         print("ball landing radius:" ,np.sqrt(ball_xf **2 + ball_yf **2))
 
