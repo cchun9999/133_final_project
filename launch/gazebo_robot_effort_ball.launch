@@ -58,7 +58,7 @@
 	name="robot_spawner2"
 	respawn="false"
 	output="screen"
-	args="-sdf -model sevenbot2 -param 2nd_robot_description_sdf -x 4.0"/>
+	args="-sdf -model sevenbot2 -param 2nd_robot_description_sdf"/>
 
   <!-- Service call to gazebo_ros to spawn a table model -->
   <node pkg="gazebo_ros"

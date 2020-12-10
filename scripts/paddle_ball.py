@@ -326,10 +326,10 @@ class SevenDOFRobot:
 
     def compute_intermediate_quaternions(self, theta, paddle_hit_rot, tf_ball):
         p0, R = self.kin.fkin(theta)
-        print(R)
+        print("R:\n", R)
         # Compute the Orientation interpolation using quaternions
         quat_axis, transform_quat = compute_transform_quaternion(R[:, 1], paddle_hit_rot.flatten())
-        print("Transform quat rotation matrix:", transform_quat.rotation_matrix)
+        print("Transform quat rotation matrix:\n", transform_quat.rotation_matrix)
         current_quat = Quaternion(matrix=R)
         target_R = transform_quat.rotation_matrix @ current_quat.rotation_matrix
         target_quat = Quaternion(matrix=target_R)
@@ -441,7 +441,7 @@ if __name__ == "__main__":
     theta1 = np.array([[0.0], [0.0], [0.0], [-0.05], [0.0], [0.0], [0.0]])
     theta2 = np.array([[0.0], [0.0], [0.0], [-0.05], [0.0], [0.0], [0.0]])
 
-    intercept_height = 0.45
+    intercept_height = 0.6
 
     # For the initial desired, head to the starting position (t=0).
     # Clear the velocities, just to be sure.
@@ -460,7 +460,7 @@ if __name__ == "__main__":
     # Test changing gravity (if uncommented with these values then the ball shouldn't move
     # during the simulation)
     #change_gravity(0,0,0)
-    r1_target_x = 1.62
+    r1_target_x = 1.5
     r1_target_y = 1
 
     r2_target_x = 1.5
@@ -526,11 +526,15 @@ if __name__ == "__main__":
         paddle_hit_vel, paddle_hit_rot = get_desired_paddle_velocity(ball_vel_final, ball_vel_desired, paddle_mass, ball_mass, restitution)
 
         p, R = robot1.kin.fkin(theta1)
+        print("p:\n", p)
 
         ball_posf = np.array([[ball_xf], [ball_yf], [intercept_height]])
         t_windup = tf_ball * windup_ratio
         t_hit = tf_ball * (1 - windup_ratio)
         windup_pos = ball_posf - pullback_ratio * paddle_hit_vel
+        print("ball posf:\n", ball_posf)
+        print("windup pos:\n", windup_pos)
+        print("tf ball:\n", tf_ball)
 
         # x0, y0, z0 = p0.flatten
 
@@ -589,43 +593,43 @@ if __name__ == "__main__":
             robot1.pub.send(theta1)
             servo.sleep()
         
-        # # Follow through pass
-        # print("doing follow through on robot 1")
-        # p, R = robot1.kin.fkin(theta1)
-        # paddle_vel = get_paddle_velocity(robot1.name)
-        # follow_pos = 1/2 * t_follow * paddle_hit_vel + p
-        # spline_x = compute_spline(t_follow, np.array([p[0], [paddle_vel[0]], follow_pos[0], [0]]))
-        # spline_y = compute_spline(t_follow, np.array([p[1], [paddle_vel[1]], follow_pos[1], [0]]))
-        # spline_z = compute_spline(t_follow, np.array([p[2], [paddle_vel[2]], follow_pos[2], [0]]))
-        # for t in np.arange(dt, t_follow, dt):
-        #     (p, R) = robot1.kin.fkin(theta1)
-        #     J      = robot1.kin.Jac(theta1)
-        #     (pd, Rd, vd, wd) = desired(t, spline_z, spline_x, spline_y)
-        #     # Rd = target_R
-        #     # Determine the residual error.
-        #     e = etip(p, pd, R, Rd)
-        #     # Build the reference velocity.
-        #     vr = np.vstack((vd,wd)) + lam * e
-        #     # Compute the Jacbian inverse (pseudo inverse)
-        #     # Jpinv = np.linalg.pinv(J)
-        #     weighted_inv = (np.linalg.inv(J.T@J + (gamma**2)*np.identity(N)))@J.T
-        #     # Update the joint angles.
-        #     thetadot = weighted_inv @ vr
-        #     # Add Secondary Task
-        #     #theta_center = np.array([[-0], [-0], [0], [-0], [0], [0], [0]])
-        #     #theta_dot_secondary = -(theta - theta_center)
-        #     theta_dot_secondary = np.zeros((N, 1))
-        #     theta_dot_secondary[2] = -theta1[2]
-        #     #theta_dot_secondary[3] = -theta[3]
-        #     thetadot += (np.identity(weighted_inv.shape[0])-weighted_inv@J)@theta_dot_secondary
-        #     theta1   += dt * thetadot
-        #     # Publish and sleep for the rest of the time.  You can choose
-        #     # whether to show the initial "negative time convergence"....
-        #     # if not t<0:
-        #     #ball_state = model_state("ball", "link")
-        #     #z_array.append(ball_state.pose.position.z)
-        #     robot1.pub.send(theta1)
-        #     servo.sleep()
+        # Follow through pass
+        print("doing follow through on robot 1")
+        p, R = robot1.kin.fkin(theta1)
+        paddle_vel = get_paddle_velocity(robot1.name)
+        follow_pos = 1/2 * t_follow * paddle_hit_vel + p
+        spline_x = compute_spline(t_follow, np.array([p[0], [paddle_vel[0]], follow_pos[0], [0]]))
+        spline_y = compute_spline(t_follow, np.array([p[1], [paddle_vel[1]], follow_pos[1], [0]]))
+        spline_z = compute_spline(t_follow, np.array([p[2], [paddle_vel[2]], follow_pos[2], [0]]))
+        for t in np.arange(dt, t_follow, dt):
+            (p, R) = robot1.kin.fkin(theta1)
+            J      = robot1.kin.Jac(theta1)
+            (pd, Rd, vd, wd) = desired(t, spline_z, spline_x, spline_y)
+            # Rd = target_R
+            # Determine the residual error.
+            e = etip(p, pd, R, Rd)
+            # Build the reference velocity.
+            vr = np.vstack((vd,wd)) + lam * e
+            # Compute the Jacbian inverse (pseudo inverse)
+            # Jpinv = np.linalg.pinv(J)
+            weighted_inv = (np.linalg.inv(J.T@J + (gamma**2)*np.identity(N)))@J.T
+            # Update the joint angles.
+            thetadot = weighted_inv @ vr
+            # Add Secondary Task
+            #theta_center = np.array([[-0], [-0], [0], [-0], [0], [0], [0]])
+            #theta_dot_secondary = -(theta - theta_center)
+            theta_dot_secondary = np.zeros((N, 1))
+            theta_dot_secondary[2] = -theta1[2]
+            #theta_dot_secondary[3] = -theta[3]
+            thetadot += (np.identity(weighted_inv.shape[0])-weighted_inv@J)@theta_dot_secondary
+            theta1   += dt * thetadot
+            # Publish and sleep for the rest of the time.  You can choose
+            # whether to show the initial "negative time convergence"....
+            # if not t<0:
+            #ball_state = model_state("ball", "link")
+            #z_array.append(ball_state.pose.position.z)
+            robot1.pub.send(theta1)
+            servo.sleep()
         
         servo.sleep()
         servo.sleep()
@@ -643,16 +647,20 @@ if __name__ == "__main__":
         ball_xf, ball_yf, tf_ball, ball_vel = robot2.compute_projected_ball_xy(intercept_height)
         
         ball_vel_final = np.array([[ball_vel[0]], [ball_vel[1]], [ball_vel[2] + grav * tf_ball]])
-        ball_vel_desired = np.array([[(r1_target_x - ball_xf)/t_arc], [(r1_target_y - ball_yf)/t_arc], [np.sqrt(2 * (target_max_height - intercept_height))]])
+        ball_vel_desired = np.array([[(r2_target_x - ball_xf)/t_arc], [(r2_target_y - ball_yf)/t_arc], [np.sqrt(2 * (target_max_height - intercept_height))]])
         
         paddle_hit_vel, paddle_hit_rot = get_desired_paddle_velocity(ball_vel_final, ball_vel_desired, paddle_mass, ball_mass, restitution)
         p, R = robot2.kin.fkin(theta2)
+        print("p:\n", p)
         # x0, y0, z0 = p0.flatten
 
         ball_posf = np.array([[ball_xf], [ball_yf], [intercept_height]])
         t_windup = tf_ball * windup_ratio
         t_hit = tf_ball * (1 - windup_ratio)
         windup_pos = ball_posf - pullback_ratio * paddle_hit_vel
+        print("ball posf:\n", ball_posf)
+        print("windup pos:\n", windup_pos)
+        print("tf ball:\n", tf_ball)
 
         #Constant distance windup
         #windup_pos = ball_posf - 0.15 * paddle_hit_vel / np.linalg.norm(paddle_hit_vel)
@@ -660,10 +668,14 @@ if __name__ == "__main__":
         # Use the current paddle velocity as initial velocity to ensure smooth
         # trajectory
         paddle_vel = get_paddle_velocity(robot2.name)
+        print("get paddle vel:\n", paddle_vel)
+        print("paddle hit vel:\n", paddle_hit_vel)
         spline_x = compute_spline(t_windup, np.array([p[0], [paddle_vel[0]], windup_pos[0], paddle_hit_vel[0]]))
         spline_y = compute_spline(t_windup, np.array([p[1], [paddle_vel[1]], windup_pos[1], paddle_hit_vel[0]]))
         spline_z_down = compute_spline(t_windup, np.array([p[2], [paddle_vel[2]], windup_pos[2], paddle_hit_vel[0]]))
-
+        print("mid x spline pos: ", call_spline_pos(spline_x, t_windup/2))
+        print("mid y spline pos: ", call_spline_pos(spline_y, t_windup/2))
+        print("mid z spline pos: ", call_spline_pos(spline_z_down, t_windup/2))
 
         splines = [spline_z_down, spline_x, spline_y]
         
@@ -709,42 +721,42 @@ if __name__ == "__main__":
             robot2.pub.send(theta2)
             servo.sleep()
         
-        # # Follow through pass
-        # p, R = robot2.kin.fkin(theta2)
-        # paddle_vel = get_paddle_velocity(robot2.name)
-        # follow_pos = 1/2 * t_follow * paddle_hit_vel + p
-        # spline_x = compute_spline(t_follow, np.array([p[0], [paddle_vel[0]], follow_pos[0], [0]]))
-        # spline_y = compute_spline(t_follow, np.array([p[1], [paddle_vel[1]], follow_pos[1], [0]]))
-        # spline_z = compute_spline(t_follow, np.array([p[2], [paddle_vel[2]], follow_pos[2], [0]]))
-        # for t in np.arange(dt, t_follow, dt):
-        #     (p, R) = robot2.kin.fkin(theta2)
-        #     J      = robot2.kin.Jac(theta2)
-        #     (pd, Rd, vd, wd) = desired(t, spline_z, spline_x, spline_y)
-        #     # Rd = target_R
-        #     # Determine the residual error.
-        #     e = etip(p, pd, R, Rd)
-        #     # Build the reference velocity.
-        #     vr = np.vstack((vd,wd)) + lam * e
-        #     # Compute the Jacbian inverse (pseudo inverse)
-        #     # Jpinv = np.linalg.pinv(J)
-        #     weighted_inv = (np.linalg.inv(J.T@J + (gamma**2)*np.identity(N)))@J.T
-        #     # Update the joint angles.
-        #     thetadot = weighted_inv @ vr
-        #     # Add Secondary Task
-        #     #theta_center = np.array([[-0], [-0], [0], [-0], [0], [0], [0]])
-        #     #theta_dot_secondary = -(theta - theta_center)
-        #     theta_dot_secondary = np.zeros((N, 1))
-        #     theta_dot_secondary[2] = -theta2[2]
-        #     #theta_dot_secondary[3] = -theta[3]
-        #     thetadot += (np.identity(weighted_inv.shape[0])-weighted_inv@J)@theta_dot_secondary
-        #     theta2   += dt * thetadot
-        #     # Publish and sleep for the rest of the time.  You can choose
-        #     # whether to show the initial "negative time convergence"....
-        #     # if not t<0:
-        #     #ball_state = model_state("ball", "link")
-        #     #z_array.append(ball_state.pose.position.z)
-        #     robot2.pub.send(theta2)
-        #     servo.sleep()
+        # Follow through pass
+        p, R = robot2.kin.fkin(theta2)
+        paddle_vel = get_paddle_velocity(robot2.name)
+        follow_pos = 1/2 * t_follow * paddle_hit_vel + p
+        spline_x = compute_spline(t_follow, np.array([p[0], [paddle_vel[0]], follow_pos[0], [0]]))
+        spline_y = compute_spline(t_follow, np.array([p[1], [paddle_vel[1]], follow_pos[1], [0]]))
+        spline_z = compute_spline(t_follow, np.array([p[2], [paddle_vel[2]], follow_pos[2], [0]]))
+        for t in np.arange(dt, t_follow, dt):
+            (p, R) = robot2.kin.fkin(theta2)
+            J      = robot2.kin.Jac(theta2)
+            (pd, Rd, vd, wd) = desired(t, spline_z, spline_x, spline_y)
+            # Rd = target_R
+            # Determine the residual error.
+            e = etip(p, pd, R, Rd)
+            # Build the reference velocity.
+            vr = np.vstack((vd,wd)) + lam * e
+            # Compute the Jacbian inverse (pseudo inverse)
+            # Jpinv = np.linalg.pinv(J)
+            weighted_inv = (np.linalg.inv(J.T@J + (gamma**2)*np.identity(N)))@J.T
+            # Update the joint angles.
+            thetadot = weighted_inv @ vr
+            # Add Secondary Task
+            #theta_center = np.array([[-0], [-0], [0], [-0], [0], [0], [0]])
+            #theta_dot_secondary = -(theta2 - theta_center)
+            theta_dot_secondary = np.zeros((N, 1))
+            theta_dot_secondary[2] = -theta2[2]
+            #theta_dot_secondary[3] = -theta[3]
+            thetadot += (np.identity(weighted_inv.shape[0])-weighted_inv@J)@theta_dot_secondary
+            theta2   += dt * thetadot
+            # Publish and sleep for the rest of the time.  You can choose
+            # whether to show the initial "negative time convergence"....
+            # if not t<0:
+            #ball_state = model_state("ball", "link")
+            #z_array.append(ball_state.pose.position.z)
+            robot2.pub.send(theta2)
+            servo.sleep()
 
         servo.sleep()
         servo.sleep()
