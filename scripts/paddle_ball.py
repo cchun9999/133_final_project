@@ -265,6 +265,14 @@ def compute_transform_quaternion(vec_s, vec_t):
     quat = Quaternion(axis=axis, angle=angle)
     return axis.reshape((-1, 1)), quat
 
+def compute_final_roation(paddle_normal, ball_xf, ball_yf):
+    vec_y = paddle_normal
+    z_z = -(vec_y[0][0] * ball_xf + vec_y[1][0] * ball_yf) / vec_y[2][0]
+    vec_z = np.array([[ball_xf], [ball_yf], [z_z]])
+    vec_z = vec_z / np.linalg.norm(vec_z)
+    vec_x = cross(vec_y, vec_z)
+    return np.hstack((vec_x, vec_y, vec_z))
+
 #####
 # 7DOF robot class used to encapsulate desired robot and its parameters.
 # Specifically useful for creating identical robots.
@@ -330,6 +338,13 @@ class SevenDOFRobot:
         num_intermediates = int(tf_ball/(2*dt)) + 1
         intermediate_quats = Quaternion.intermediates(current_quat, target_quat, num_intermediates, 
                                                       include_endpoints=False)
+
+        # current_quat = Quaternion(matrix=R)
+        # target_R = compute_final_roation(paddle_hit_rot, ball_xf, ball_yf)
+        # target_quat = Quaternion(matrix=target_R)
+        # num_intermediates = int(tf_ball/(2*dt)) + 1
+        # intermediate_quats = Quaternion.intermediates(current_quat, target_quat, num_intermediates, 
+        #                                               include_endpoints=False)
         return intermediate_quats, target_quat
 
     def execute_down_motion(self, t, theta, desired_rot, splines):
@@ -420,7 +435,13 @@ def run(robot, theta, target, ball_obj, ret):
     splines = [spline_z_down, spline_x, spline_y]
 
     # Compute rotation matrix trajectory
-    intermediate_quats, target_quat = robot.compute_intermediate_quaternions(theta, paddle_hit_rot, tf_ball)
+    #intermediate_quats, target_quat = robot.compute_intermediate_quaternions(theta, paddle_hit_rot, tf_ball)
+    current_quat = Quaternion(matrix=R)
+    target_R = compute_final_roation(paddle_hit_rot, ball_xf, ball_yf)
+    target_quat = Quaternion(matrix=target_R)
+    num_intermediates = int(tf_ball/(2*dt)) + 1
+    intermediate_quats = Quaternion.intermediates(current_quat, target_quat, num_intermediates, 
+                                                  include_endpoints=False)
 
     # Forward (Down) pass. Move the ball from z = 0.6 to z = 0.4 and go to the desired ball_xf, ball_yf. Also orient
     # the paddle in the correct manner
@@ -571,43 +592,6 @@ if __name__ == "__main__":
         tf_default = 0.8
         print("=====================ROBOT1==================")
 
-        r1_idx, r2_idx = get_active_robots(num_iters)
-        
-        ret = []
-        t1 = threading.Thread(target=run, args=(robots[r1_idx], thetas[r1_idx], targets[r1_idx], ball1_obj, ret))
-        t1.start()
-        ret2 = []
-        t2 = threading.Thread(target=run, args=(robots[r2_idx], thetas[r2_idx], targets[r2_idx], ball2_obj, ret2))
-        t2.start()
-        t1.join()
-        t2.join()
-        thetas[r1_idx] = np.array(ret)
-        thetas[r2_idx] = np.array(ret2)
-
-        num_iters += 1
-
-
-        ##################### Robot2 ####################
-        print("=====================ROBOT2==================")
-        
-        r1_idx, r2_idx = get_active_robots(num_iters)
-        
-        ret = []
-        t1 = threading.Thread(target=run, args=(robots[r1_idx], thetas[r1_idx], targets[r1_idx], ball1_obj, ret))
-        t1.start()
-        ret2 = []
-        t2 = threading.Thread(target=run, args=(robots[r2_idx], thetas[r2_idx], targets[r2_idx], ball2_obj, ret2))
-        t2.start()
-        t1.join()
-        t2.join()
-        thetas[r1_idx] = np.array(ret)
-        thetas[r2_idx] = np.array(ret2)
-
-        num_iters += 1
-
-
-        ##################### Robot3 ####################
-        print("=====================ROBOT3==================")
         r1_idx, r2_idx = get_active_robots(num_iters)
         
         ret = []
