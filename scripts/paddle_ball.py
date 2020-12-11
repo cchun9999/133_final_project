@@ -22,6 +22,7 @@
 import rospy
 import numpy as np
 import matplotlib.pyplot as plt
+import random
 
 from gazebodemos.kinematics2 import Kinematics
 from std_msgs.msg            import Float64
@@ -299,14 +300,16 @@ class SevenDOFRobot:
         if not self.pub.dofs() == self.kin.dofs():
             rospy.logerr("FIX Publisher to agree with URDF!")
 
-    def compute_projected_ball_xy(self, intercept_height):
+    def compute_projected_ball_xy(self, intercept_height, first):
         # Get information on the state of the ball. Use this to compute the
         # time it will take the ball to reach the z = 0.6 point so that we can
         # plan the trajectory of the robot to hit it at the right time.
         ball_state = model_state("ball", "link")
         ball_vel = np.array([ball_state.twist.linear.x, ball_state.twist.linear.y, ball_state.twist.linear.z])
+        print("ball vel:\n", ball_vel)
         ball_z = ball_state.pose.position.z
-        ball_solns = np.roots(np.array([1/2*grav, ball_vel[2], ball_z - intercept_height]))
+        print(ball_z)
+        ball_solns = np.roots(np.array([1/2*grav, ball_vel[2], ball_z - TABLE_HEIGHT]))
         print("Ball solns:", ball_solns)
         tf_ball = max(ball_solns)
         if not np.isreal(tf_ball):
@@ -326,7 +329,21 @@ class SevenDOFRobot:
         max_height_actual = 1/2 * grav * max_height_t ** 2 + ball_vel[2] * max_height_t + ball_z
         print("max_height_prediction:", max_height_actual)
 
-        return ball_xf, ball_yf, tf_ball, ball_vel
+
+        # now calculate with bounce
+        new_ball_vel = np.array([ball_vel[0], ball_vel[1], -ball_vel[2]])
+        new_ball_solns = np.roots(np.array([1/2*grav, new_ball_vel[2], ball_z - TABLE_HEIGHT]))
+        tot_bounce_time = np.sum(np.abs(new_ball_solns))
+        new_tf_ball = tf_ball + tot_bounce_time
+        new_ball_xf = ball_xf + ball_vel[0] * tot_bounce_time 
+        new_ball_yf = ball_yf + ball_vel[1] * tot_bounce_time
+        print("New Ball solns:", new_ball_solns)
+        print(f"new ball projected (x,y): {new_ball_xf, new_ball_yf}")
+
+
+        if (not first):
+            return new_ball_xf, new_ball_yf, tf_ball, new_tf_ball, ball_vel
+        return ball_xf, ball_yf, tf_ball, tf_ball, ball_vel
 
     def compute_intermediate_quaternions(self, theta, paddle_hit_rot, tf_ball):
         p0, R = self.kin.fkin(theta)
@@ -410,7 +427,8 @@ if __name__ == "__main__":
     theta1 = np.array([[0.0], [0.0], [0.0], [-0.05], [0.0], [0.0], [0.0]])
     theta2 = np.array([[0.0], [0.0], [0.0], [-0.05], [0.0], [0.0], [0.0]])
 
-    intercept_height = .45
+    intercept_height = .5
+    TABLE_HEIGHT = .5
 
     # For the initial desired, head to the starting position (t=0).
     # Clear the velocities, just to be sure.
@@ -429,11 +447,11 @@ if __name__ == "__main__":
     # Test changing gravity (if uncommented with these values then the ball shouldn't move
     # during the simulation)
     #change_gravity(0,0,0)
-    r1_target_x = 4
-    r1_target_y = 1.2
+    r1_target_x = 2
+    r1_target_y = 1
 
-    r2_target_x = 0
-    r2_target_y = 1.2
+    r2_target_x = 2
+    r2_target_y = 1
     
     target_max_height = 2
     max_height_vel = np.sqrt(-2 * grav * (target_max_height - intercept_height))
@@ -471,6 +489,10 @@ if __name__ == "__main__":
     lam =  0.1/dt
     num_iters = 0
     while (not rospy.is_shutdown()):
+
+        r1_target_y = 1 + ((random.random() - .5) / 10)
+        r2_target_y = 1 + ((random.random() - .5) / 10)
+
         # Using the result theta(i-1) of the last cycle (i-1): Compute
         # the fkin(theta(i-1)) and the Jacobian J(theta(i-1)).
         num_iters += 1
@@ -481,12 +503,16 @@ if __name__ == "__main__":
 
         print("========================ROBOT1=====================")
 
-        ball_xf, ball_yf, tf_ball, ball_vel = robot1.compute_projected_ball_xy(intercept_height)
+        if(num_iters == 1):
+            first = True
+        else:
+            first = False
+        ball_xf, ball_yf, first_tf_ball, tf_ball, ball_vel = robot1.compute_projected_ball_xy(intercept_height, first)
 
         
        
         
-        ball_vel_final = np.array([[ball_vel[0]], [ball_vel[1]], [ball_vel[2] + grav * tf_ball]])
+        ball_vel_final = np.array([[ball_vel[0]], [ball_vel[1]], [ball_vel[2] + grav * first_tf_ball]])
         ball_vel_desired = np.array([[(r1_target_x - ball_xf)/t_arc], [(r1_target_y - ball_yf)/t_arc], [max_height_vel]])
         
         paddle_hit_vel, paddle_hit_rot = get_desired_paddle_velocity(ball_vel_final, ball_vel_desired, paddle_mass, ball_mass, restitution)
@@ -553,9 +579,9 @@ if __name__ == "__main__":
         ############################ Robot 2 ############################
         print("====================ROBOT2====================")
         
-        ball_xf, ball_yf, tf_ball, ball_vel = robot2.compute_projected_ball_xy(intercept_height)
+        ball_xf, ball_yf, first_tf_ball, tf_ball, ball_vel = robot2.compute_projected_ball_xy(intercept_height, False)
 
-        ball_vel_final = np.array([[ball_vel[0]], [ball_vel[1]], [ball_vel[2] + grav * tf_ball]])
+        ball_vel_final = np.array([[ball_vel[0]], [ball_vel[1]], [ball_vel[2] + grav * first_tf_ball]])
         ball_vel_desired = np.array([[(r2_target_x - ball_xf)/t_arc], [(r2_target_y - ball_yf)/t_arc], [max_height_vel]])
         
         paddle_hit_vel, paddle_hit_rot = get_desired_paddle_velocity(ball_vel_final, ball_vel_desired, paddle_mass, ball_mass, restitution)
@@ -596,6 +622,8 @@ if __name__ == "__main__":
             theta2 = robot2.execute_motion(t, theta2, desired_rot, [spline_z, spline_x, spline_y])
             robot2.pub.send(theta2)
             servo.sleep()
+
+        print("done forw")
 
         # Compute the z-spline for the upwards motion. X and Y stay constant
         p, R = robot2.kin.fkin(theta2)
