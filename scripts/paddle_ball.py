@@ -348,11 +348,10 @@ def main():
     # Function to return target (x,y) of ball at given time
     get_target_xy = lambda t: (1.2 * np.sin(t), 1.2 * np.cos(t))
     
-    target_max_height = 3
+    target_max_height = 2
     max_height_vel = np.sqrt(-2 * grav * (target_max_height - intercept_height))
     print("max_height_vel", max_height_vel)
-    t_arc = np.sqrt(-2 * (target_max_height - intercept_height) / grav)
-    #t_arc = -2 * max_height_vel / grav
+    t_arc = -2 * max_height_vel / grav
     print("t_arc:", t_arc)
 
     #Masses
@@ -409,7 +408,7 @@ def main():
         actual = np.array([[ball_state.twist.linear.x], [ball_state.twist.linear.y], [ball_state.twist.linear.z]])
         print("ball_vel_desired", ball_vel_desired)
         print("velocity actual - desired:", actual - ball_vel_desired)
-        print("velocity %% error:", np.linalg.norm(actual - ball_vel_desired)/ np.linalg.norm(actual))
+        print("velocity error percent:", 100 * np.linalg.norm(actual - ball_vel_desired)/ np.linalg.norm(actual))
 
 
 
