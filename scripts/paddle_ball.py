@@ -331,7 +331,7 @@ class SevenDOFRobot:
         print(R)
         # Compute the Orientation interpolation using quaternions
         quat_axis, transform_quat = compute_transform_quaternion(R[:, 1], paddle_hit_rot.flatten())
-        print("Transform quat rotation matrix:", transform_quat.rotation_matrix)
+        #print("Transform quat rotation matrix:", transform_quat.rotation_matrix)
         current_quat = Quaternion(matrix=R)
         target_R = transform_quat.rotation_matrix @ current_quat.rotation_matrix
         target_quat = Quaternion(matrix=target_R)
@@ -418,7 +418,7 @@ def run(robot, theta, target, ball_obj, ret):
     ball_vel_final = np.array([[ball_vel[0]], [ball_vel[1]], [ball_vel[2] + grav * tf_ball]])
     ball_vel_desired = np.array([[(target[0] - ball_xf)/t_arc], [(target[1] - ball_yf)/t_arc], [max_height_vel]])
     paddle_hit_vel, paddle_hit_rot = get_desired_paddle_velocity(ball_vel_final, ball_vel_desired, paddle_mass, ball_mass, restitution)
-    print("paddle_hit_rot:", paddle_hit_rot)
+    #print("paddle_hit_rot:", paddle_hit_rot)
 
     # Compute the desired splines for each dimension of the paddle tip.
     # Use the initial tip position of p0.
@@ -428,7 +428,7 @@ def run(robot, theta, target, ball_obj, ret):
     # Use the current paddle velocity as initial velocity to ensure smooth
     # trajectory
     paddle_vel = get_paddle_velocity(robot.name)
-    print("paddle velocity:", paddle_vel)
+    #print("paddle velocity:", paddle_vel)
     spline_x = compute_spline(tf_ball/2, np.array([[x0], [paddle_vel[0]], [ball_xf], [0]]))
     spline_y = compute_spline(tf_ball/2, np.array([[y0], [paddle_vel[1]], [ball_yf], [0]]))
     spline_z_down = compute_spline(tf_ball/2, np.array([[z0], [paddle_vel[2]], [0.4], [0]]))
@@ -453,7 +453,7 @@ def run(robot, theta, target, ball_obj, ret):
     spline_x = compute_spline(tf_ball/2, np.array([[p[0]], [paddle_vel[0]], [ball_xf],paddle_hit_vel[0]/scale]))
     spline_y = compute_spline(tf_ball/2, np.array([[p[1]], [paddle_vel[1]], [ball_yf],paddle_hit_vel[1]/scale]))
     spline_z_up = compute_spline(tf_ball/2, np.array([[p[2]], [paddle_vel[2]], [intercept_height],paddle_hit_vel[2]/scale]))
-    print('spline_z_up:', spline_z_up)
+    #print('spline_z_up:', spline_z_up)
 
     # Backward (Up) pass: Move the paddle back up to original z, ending with a hit of the ball.
     # Don't change x or y since they should already be in the target orientation.
@@ -462,7 +462,7 @@ def run(robot, theta, target, ball_obj, ret):
         # Publish and sleep for the rest of the time.
         robot.pub.send(theta)
         servo.sleep()
-    print("theta:", theta)
+    #print("theta:", theta)
 
     ret[:] = list(theta)
 
