@@ -11,7 +11,7 @@
     </physics>
 
     <!-- Gravity :) -->
-    <gravity>0.0 0.0 -0.5</gravity>
+    <gravity>0.0 0.0 -1.5</gravity>
 
     <!-- A global light source -->
     <include>

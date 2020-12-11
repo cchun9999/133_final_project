@@ -360,7 +360,7 @@ class SevenDOFRobot:
         # Build the reference velocity.
         vr = np.vstack((vd,wd)) + lam * e
         # Compute the Jacbian inverse (pseudo inverse)
-        gamma = 0.04
+        gamma = 0.03
         weighted_inv = (np.linalg.inv(J.T@J + (gamma**2)*np.identity(N)))@J.T
 
         # Update the joint angles.
@@ -384,7 +384,7 @@ class SevenDOFRobot:
         # Build the reference velocity.
         vr = np.vstack((vd,wd)) + lam * e
         # Compute the Jacbian inverse (pseudo inverse)
-        gamma = 0.04
+        gamma = 0.03
         weighted_inv = (np.linalg.inv(J.T@J + (gamma**2)*np.identity(N)))@J.T
 
         # Update the joint angles.
@@ -416,7 +416,7 @@ def run(robot, theta, target, ball_obj, ret):
     ball_xf, ball_yf, tf_ball, ball_vel = robot.compute_projected_ball_xy(intercept_height, ball_obj)
 
     ball_vel_final = np.array([[ball_vel[0]], [ball_vel[1]], [ball_vel[2] + grav * tf_ball]])
-    ball_vel_desired = np.array([[(target[0] - ball_xf)/t_arc], [(target[1] - ball_yf)/t_arc], [np.sqrt(2 * (target_max_height - intercept_height))]])
+    ball_vel_desired = np.array([[(target[0] - ball_xf)/t_arc], [(target[1] - ball_yf)/t_arc], [max_height_vel]])
     paddle_hit_vel, paddle_hit_rot = get_desired_paddle_velocity(ball_vel_final, ball_vel_desired, paddle_mass, ball_mass, restitution)
     print("paddle_hit_rot:", paddle_hit_rot)
 
@@ -435,13 +435,7 @@ def run(robot, theta, target, ball_obj, ret):
     splines = [spline_z_down, spline_x, spline_y]
 
     # Compute rotation matrix trajectory
-    #intermediate_quats, target_quat = robot.compute_intermediate_quaternions(theta, paddle_hit_rot, tf_ball)
-    current_quat = Quaternion(matrix=R)
-    target_R = compute_final_roation(paddle_hit_rot, ball_xf, ball_yf)
-    target_quat = Quaternion(matrix=target_R)
-    num_intermediates = int(tf_ball/(2*dt)) + 1
-    intermediate_quats = Quaternion.intermediates(current_quat, target_quat, num_intermediates, 
-                                                  include_endpoints=False)
+    intermediate_quats, target_quat = robot.compute_intermediate_quaternions(theta, paddle_hit_rot, tf_ball)
 
     # Forward (Down) pass. Move the ball from z = 0.6 to z = 0.4 and go to the desired ball_xf, ball_yf. Also orient
     # the paddle in the correct manner
@@ -517,7 +511,7 @@ if __name__ == "__main__":
     theta2 = np.array([[0.0], [0.0], [0.0], [-0.05], [0.0], [0.0], [0.0]])
     theta3 = np.array([[0.0], [0.0], [0.0], [-0.05], [0.0], [0.0], [0.0]])
 
-    intercept_height = 0.6
+    intercept_height = 0.45
 
     # For the initial desired, head to the starting position (t=0).
     # Clear the velocities, just to be sure.
@@ -541,8 +535,8 @@ if __name__ == "__main__":
     r1_target_x = 2
     r1_target_y = 1.25
 
-    r2_target_x = 1.0
-    r2_target_y= 2
+    r2_target_x = 1.1
+    r2_target_y= 2.2
 
     r3_target_x = 0
     r3_target_y = 1.25
@@ -551,17 +545,20 @@ if __name__ == "__main__":
     # r4_target_x = -0.7
     # r4_target_y = 1.2
 
-    target_max_height = 1.0
-    t_arc = np.sqrt(-2 * target_max_height / grav)
+    target_max_height = 2
+    max_height_vel = np.sqrt(-2 * grav * (target_max_height - intercept_height))
+    print("max_height_vel", max_height_vel)
+    t_arc =  -2 * max_height_vel / grav
+    print("t_arc:", t_arc)
 
     #Masses
-    ball_mass = 0.001
+    ball_mass = 0.0002
     paddle_mass = 0.2
 
     #Coefficient of Restitution
     restitution = 1
 
-    scale = 100
+    scale = 1
 
     def get_active_robots(iter_num):
         if (iter_num % 3 == 0):
@@ -589,8 +586,8 @@ if __name__ == "__main__":
         print("ITER #:", num_iters)
         print("THETA1:", theta1.T)
         print("THETA2:", theta2.T)
+        print("Current active threads:", threading.active_count())
         tf_default = 0.8
-        print("=====================ROBOT1==================")
 
         r1_idx, r2_idx = get_active_robots(num_iters)
         
