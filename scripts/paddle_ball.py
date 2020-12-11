@@ -511,7 +511,7 @@ if __name__ == "__main__":
     theta2 = np.array([[0.0], [0.0], [0.0], [-0.05], [0.0], [0.0], [0.0]])
     theta3 = np.array([[0.0], [0.0], [0.0], [-0.05], [0.0], [0.0], [0.0]])
 
-    intercept_height = 0.45
+    intercept_height = 0.43
 
     # For the initial desired, head to the starting position (t=0).
     # Clear the velocities, just to be sure.
