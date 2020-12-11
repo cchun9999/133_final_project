@@ -11,10 +11,14 @@
           </box>
         </geometry>
         <surface>
+          <bounce>
+            <restitution_coefficient>1.0</restitution_coefficient>
+            <threshold>0.01</threshold>
+          </bounce>
           <friction>
             <ode>
-              <mu>0.6</mu>
-              <mu2>0.6</mu2>
+              <mu>0.00</mu>
+              <mu2>0.00</mu2>
             </ode>
           </friction>
         </surface>

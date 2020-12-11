@@ -434,15 +434,11 @@ if __name__ == "__main__":
 
     r2_target_x = 0
     r2_target_y = 1.2
-
-    # Function to return target (x,y) of ball at given time
-    get_target_xy = lambda t: (1.2 * np.sin(t), 1.2 * np.cos(t))
     
-    target_max_height = 1.5
+    target_max_height = 2
     max_height_vel = np.sqrt(-2 * grav * (target_max_height - intercept_height))
     print("max_height_vel", max_height_vel)
-    t_arc =  -2 *max_height_vel / grav
-    #t_arc = -2 * max_height_vel / grav
+    t_arc =  -2 * max_height_vel / grav
     print("t_arc:", t_arc)
 
     #Masses
@@ -455,12 +451,12 @@ if __name__ == "__main__":
     windup_ratio = 0.5
     gamma = 1e-3
 
-    pullback_ratio = 0.16
+    pullback_ratio = 0.2
     
     z_vel_array = []
     max_height_array = []
     ball_vel_desired = np.array([[0], [0], [0]])
-    t_follow = 0.15
+    t_follow = 0.2
 
     correction_angle = -0/15 * np.pi / 180
     correction_matrix = Rx(correction_angle)
@@ -560,7 +556,7 @@ if __name__ == "__main__":
         ball_xf, ball_yf, tf_ball, ball_vel = robot2.compute_projected_ball_xy(intercept_height)
 
         ball_vel_final = np.array([[ball_vel[0]], [ball_vel[1]], [ball_vel[2] + grav * tf_ball]])
-        ball_vel_desired = np.array([[(r2_target_x - ball_xf)/t_arc], [(r2_target_y - ball_yf)/t_arc], [np.sqrt(2 * (target_max_height - intercept_height))]])
+        ball_vel_desired = np.array([[(r2_target_x - ball_xf)/t_arc], [(r2_target_y - ball_yf)/t_arc], [max_height_vel]])
         
         paddle_hit_vel, paddle_hit_rot = get_desired_paddle_velocity(ball_vel_final, ball_vel_desired, paddle_mass, ball_mass, restitution)
         p, R = robot2.kin.fkin(theta2)
