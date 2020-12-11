@@ -499,7 +499,7 @@
         </geometry>
         <surface>
           <bounce>
-            <restitution_coefficient>1.0</restitution_coefficient>
+            <restitution_coefficient>0.8</restitution_coefficient>
             <threshold>.01</threshold>
           </bounce>
           <friction>
@@ -586,7 +586,7 @@
         </geometry>
         <material>
           <script>
-            <name>Gazebo/Green</name>
+            <name>Gazebo/Red</name>
             <uri>file://media/materials/scripts/gazebo.material</uri>
           </script>
         </material>

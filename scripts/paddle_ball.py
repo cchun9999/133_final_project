@@ -22,6 +22,7 @@
 import rospy
 import numpy as np
 import matplotlib.pyplot as plt
+import random
 
 from gazebodemos.kinematics2 import Kinematics
 from std_msgs.msg            import Float64
@@ -463,10 +464,7 @@ if __name__ == "__main__":
 
     # Targets
     r1_x = 0
-    r1_y = 1.0
-
     r2_x = 4.0
-    r2_y = 1.0
     
     table_height = 0.2 + 0.03 / 2
     intercept_height = 0.5
@@ -477,7 +475,7 @@ if __name__ == "__main__":
     paddle_mass = 0.2
 
     #Coefficient of Restitution
-    restitution = 1.0
+    restitution = 0.8
 
     windup_ratio = 0.3
     gamma = 1e-3
@@ -515,12 +513,12 @@ if __name__ == "__main__":
         if (num_iters == 1):
             ball_xf, ball_yf, tf_ball, ball_vel = robot1.compute_projected_ball_xy(intercept_height)
             ball_vel_final = np.array([[ball_vel[0]], [ball_vel[1]], [ball_vel[2] + grav * tf_ball]])
-            ball_vel_desired = robot1.compute_desired_velocity(r2_x, r1_x, r2_y, ball_yf, intercept_height)
+            ball_vel_desired = robot1.compute_desired_velocity(r2_x, r1_x, random.uniform(0.8, 1.3), ball_yf, intercept_height)
             paddle_hit_vel, paddle_hit_rot = get_desired_paddle_velocity(ball_vel_final, ball_vel_desired, paddle_mass, ball_mass, restitution)
             ball_posf = np.array([[ball_xf], [ball_yf], [intercept_height]])
         else:
             ball_yf, ball_zf, tf_ball, ball_vel_final = robot1.compute_projected_ball_yz(r1_x)
-            ball_vel_desired = robot1.compute_desired_velocity(r2_x, r1_x, r2_y, ball_yf, ball_zf)
+            ball_vel_desired = robot1.compute_desired_velocity(r2_x, r1_x, random.uniform(0.8, 1.3), ball_yf, ball_zf)
             paddle_hit_vel, paddle_hit_rot = get_desired_paddle_velocity(ball_vel_final, ball_vel_desired, paddle_mass, ball_mass, restitution)
             ball_posf = np.array([[r1_x], [ball_yf], [ball_zf]])
             
@@ -578,7 +576,7 @@ if __name__ == "__main__":
         print("====================ROBOT2====================")
         
         ball_yf, ball_zf, tf_ball, ball_vel_final = robot2.compute_projected_ball_yz(r2_x)
-        ball_vel_desired = robot1.compute_desired_velocity(r1_x, r2_x, r1_y, ball_yf, ball_zf)
+        ball_vel_desired = robot1.compute_desired_velocity(r1_x, r2_x, random.uniform(0.8, 1.3), ball_yf, ball_zf)
         paddle_hit_vel, paddle_hit_rot = get_desired_paddle_velocity(ball_vel_final, ball_vel_desired, paddle_mass, ball_mass, restitution)
         ball_posf = np.array([[r2_x], [ball_yf], [ball_zf]])
 
