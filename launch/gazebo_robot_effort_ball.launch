@@ -67,7 +67,7 @@
   name="ball_spawner"
   respawn="false"
   output="screen"
-  args="-sdf -model ball -file $(find gazebodemos)/models/unit_sphere/model.sdf -x 0 -y 1.0 -z 3.0"/>
+  args="-sdf -model ball -file $(find gazebodemos)/models/unit_sphere/model.sdf -x 0 -y 1.0 -z 2.0"/>
 
 
   <!-- Load the controllers. -->
