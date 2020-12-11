@@ -66,7 +66,7 @@
 	name="table_spawner"
 	respawn="false"
 	output="screen"
-	args="-sdf -model table -file $(find gazebodemos)/models/table/model.sdf -x 2.0 -y 1.0 -z 0"/> -->
+	args="-sdf -model table -file $(find gazebodemos)/models/table/model.sdf -x 2.0 -y 1.0 -z -0.3"/> -->
 
   <!-- Service call to gazebo_ros to spawn a ball model -->
   <node pkg="gazebo_ros"

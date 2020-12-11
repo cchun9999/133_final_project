@@ -318,22 +318,65 @@ class SevenDOFRobot:
         # Compute the projected final x, y positions of the ball
         ball_xf = ball_state.pose.position.x + ball_vel[0] * tf_ball 
         ball_yf = ball_state.pose.position.y + ball_vel[1] * tf_ball
-        print(f"ball projected (x,y): {ball_xf, ball_yf}")
-
-        print("ball landing radius:" ,np.sqrt(ball_xf **2 + ball_yf **2))
-
         max_height_t = -ball_vel[2] / grav
         max_height_actual = 1/2 * grav * max_height_t ** 2 + ball_vel[2] * max_height_t + ball_z
         print("max_height_prediction:", max_height_actual)
 
         return ball_xf, ball_yf, tf_ball, ball_vel
 
+    def compute_projected_ball_yz(self, x_intercept):
+        # Get information on the state of the ball. Use this to compute the
+        # time it will take the ball to reach the z = 0.6 point so that we can
+        # plan the trajectory of the robot to hit it at the right time.
+        ball_state = model_state("ball", "link")
+        ball_vel = np.array([ball_state.twist.linear.x, ball_state.twist.linear.y, ball_state.twist.linear.z])
+        ball_pos = np.array([ball_state.pose.position.x, ball_state.pose.position.y, ball_state.pose.position.z])
+        tf_ball = (x_intercept - ball_pos[0]) / ball_vel[0]
+        print('projected tf:', tf_ball)
+        ball_yf = ball_pos[1] + ball_vel[1] * tf_ball
+
+        ball_solns = np.roots(np.array([1/2*grav, ball_vel[2], ball_pos[2] - table_height]))
+        tf_ball_1 = max(ball_solns)
+        tf_ball_2 = tf_ball - tf_ball_1
+        v_z_bounce = -(ball_vel[2] + grav * tf_ball_1)
+        ball_zf = (1/2*grav * tf_ball_2 ** 2 + v_z_bounce * tf_ball_2 + table_height)
+        print(f"ball projected (y,z): {ball_yf, ball_zf}")
+
+        ball_vel_final = np.array([[ball_vel[0]], [ball_vel[1]], [v_z_bounce + grav * tf_ball_2]])
+        return ball_yf, ball_zf, tf_ball, ball_vel_final
+
+    def compute_desired_velocity(self, x_final, x_initial, target_y, ball_yf, ball_zf):
+        v_z = np.sqrt(-2 * grav * (target_max_height - ball_zf))
+        if not np.isreal(v_z):
+            v_z = 0.0;
+        
+        ball_solns = np.roots(np.array([1/2*grav, v_z, ball_zf - table_height]))
+        tf_ball_1 = max(ball_solns)
+        if not np.isreal(tf_ball_1):
+            # default to tf if failed to find a root
+            print('failed to find root')
+            tf_ball_1 = tf_default
+
+        v_z_bounce = -(v_z + grav * tf_ball_1)
+        print("bounce velocity:", v_z_bounce)
+        ball_solns = np.roots(np.array([1/2*grav, v_z_bounce, table_height - intercept_height]))
+        tf_ball_2 = min(ball_solns)
+        if not np.isreal(tf_ball_2):
+            # default to tf if failed to find a root
+            print('failed to find root')
+            tf_ball_2 = tf_default
+        print("tf 1:", tf_ball_1)
+        print("tf 2:", tf_ball_2)
+        tf_ball = tf_ball_1 + tf_ball_2
+        
+        v_x = (x_final - x_initial) / tf_ball
+        v_y = (target_y - ball_yf) / tf_ball
+        return np.array([[v_x], [v_y], [v_z]])
+
     def compute_intermediate_quaternions(self, theta, paddle_hit_rot, tf_ball):
         p0, R = self.kin.fkin(theta)
-        print("R:\n", R)
         # Compute the Orientation interpolation using quaternions
         quat_axis, transform_quat = compute_transform_quaternion(R[:, 1], paddle_hit_rot.flatten())
-        print("Transform quat rotation matrix:\n", transform_quat.rotation_matrix)
         current_quat = Quaternion(matrix=R)
         target_R = transform_quat.rotation_matrix @ current_quat.rotation_matrix
         target_quat = Quaternion(matrix=target_R)
@@ -410,14 +453,6 @@ if __name__ == "__main__":
     theta1 = np.array([[0.0], [0.0], [0.0], [-0.05], [0.0], [0.0], [0.0]])
     theta2 = np.array([[0.0], [0.0], [0.0], [-0.05], [0.0], [0.0], [0.0]])
 
-    intercept_height = .45
-
-    # For the initial desired, head to the starting position (t=0).
-    # Clear the velocities, just to be sure.
-    (pd, Rd, vd, wd) = (np.zeros((3, 1)), np.zeros((3, 3)), np.zeros((3, 1)), np.zeros((3, 1)))
-    vd = vd * 0.0
-    wd = wd * 0.0
-    pd = np.array([[0], [0.90], [intercept_height]])
 
     # Get a model state service proxy to be able to query state of the ball
     model_state = rospy.ServiceProxy('/gazebo/get_model_state', GetModelState)
@@ -426,20 +461,16 @@ if __name__ == "__main__":
     physics = rospy.ServiceProxy('/gazebo/get_physics_properties', GetPhysicsProperties)
     grav = physics().gravity.z
 
-    # Test changing gravity (if uncommented with these values then the ball shouldn't move
-    # during the simulation)
-    #change_gravity(0,0,0)
-    r1_target_x = 4
-    r1_target_y = 1.2
+    # Targets
+    r1_x = 0
+    r1_y = 1.0
 
-    r2_target_x = 0
-    r2_target_y = 1.2
+    r2_x = 4.0
+    r2_y = 1.0
     
-    target_max_height = 2
-    max_height_vel = np.sqrt(-2 * grav * (target_max_height - intercept_height))
-    print("max_height_vel", max_height_vel)
-    t_arc =  -2 * max_height_vel / grav
-    print("t_arc:", t_arc)
+    table_height = 0.2 + 0.03 / 2
+    intercept_height = 0.5
+    target_max_height = 0.625
 
     #Masses
     ball_mass = 0.0002
@@ -448,7 +479,7 @@ if __name__ == "__main__":
     #Coefficient of Restitution
     restitution = 1.0
 
-    windup_ratio = 0.5
+    windup_ratio = 0.3
     gamma = 1e-3
 
     pullback_ratio = 0.2
@@ -481,32 +512,26 @@ if __name__ == "__main__":
 
         print("========================ROBOT1=====================")
 
-        ball_xf, ball_yf, tf_ball, ball_vel = robot1.compute_projected_ball_xy(intercept_height)
-
-        
-       
-        
-        ball_vel_final = np.array([[ball_vel[0]], [ball_vel[1]], [ball_vel[2] + grav * tf_ball]])
-        ball_vel_desired = np.array([[(r1_target_x - ball_xf)/t_arc], [(r1_target_y - ball_yf)/t_arc], [max_height_vel]])
-        
-        paddle_hit_vel, paddle_hit_rot = get_desired_paddle_velocity(ball_vel_final, ball_vel_desired, paddle_mass, ball_mass, restitution)
-
-        p, R = robot1.kin.fkin(theta1)
-
-
-        ball_posf = np.array([[ball_xf], [ball_yf], [intercept_height]])
+        if (num_iters == 1):
+            ball_xf, ball_yf, tf_ball, ball_vel = robot1.compute_projected_ball_xy(intercept_height)
+            ball_vel_final = np.array([[ball_vel[0]], [ball_vel[1]], [ball_vel[2] + grav * tf_ball]])
+            ball_vel_desired = robot1.compute_desired_velocity(r2_x, r1_x, r2_y, ball_yf, intercept_height)
+            paddle_hit_vel, paddle_hit_rot = get_desired_paddle_velocity(ball_vel_final, ball_vel_desired, paddle_mass, ball_mass, restitution)
+            ball_posf = np.array([[ball_xf], [ball_yf], [intercept_height]])
+        else:
+            ball_yf, ball_zf, tf_ball, ball_vel_final = robot1.compute_projected_ball_yz(r1_x)
+            ball_vel_desired = robot1.compute_desired_velocity(r2_x, r1_x, r2_y, ball_yf, ball_zf)
+            paddle_hit_vel, paddle_hit_rot = get_desired_paddle_velocity(ball_vel_final, ball_vel_desired, paddle_mass, ball_mass, restitution)
+            ball_posf = np.array([[r1_x], [ball_yf], [ball_zf]])
+            
         t_windup = tf_ball * windup_ratio
         t_hit = tf_ball * (1 - windup_ratio)
         windup_pos = ball_posf - pullback_ratio * paddle_hit_vel
-        print("ball posf:\n", ball_posf)
-        print("windup pos:\n", windup_pos)
-        print("tf ball:\n", tf_ball)
 
-        #Constant distance windup
-        #windup_pos = ball_posf - 0.15 * paddle_hit_vel / np.linalg.norm(paddle_hit_vel)
 
         # Use the current paddle velocity as initial velocity to ensure smooth
         # trajectory
+        p, R = robot1.kin.fkin(theta1)
         paddle_vel = get_paddle_velocity(robot1.name)
         spline_x = compute_spline(t_windup, np.array([p[0], [paddle_vel[0]], windup_pos[0], paddle_hit_vel[0]]))
         spline_y = compute_spline(t_windup, np.array([p[1], [paddle_vel[1]], windup_pos[1], paddle_hit_vel[1]]))
@@ -537,7 +562,6 @@ if __name__ == "__main__":
             servo.sleep()
         
         # Follow through pass
-        print("doing follow through on robot 1")
         p, R = robot1.kin.fkin(theta1)
         paddle_vel = get_paddle_velocity(robot1.name)
         follow_pos = 1/2 * t_follow * paddle_hit_vel + p
@@ -553,38 +577,25 @@ if __name__ == "__main__":
         ############################ Robot 2 ############################
         print("====================ROBOT2====================")
         
-        ball_xf, ball_yf, tf_ball, ball_vel = robot2.compute_projected_ball_xy(intercept_height)
-
-        ball_vel_final = np.array([[ball_vel[0]], [ball_vel[1]], [ball_vel[2] + grav * tf_ball]])
-        ball_vel_desired = np.array([[(r2_target_x - ball_xf)/t_arc], [(r2_target_y - ball_yf)/t_arc], [max_height_vel]])
-        
+        ball_yf, ball_zf, tf_ball, ball_vel_final = robot2.compute_projected_ball_yz(r2_x)
+        ball_vel_desired = robot1.compute_desired_velocity(r1_x, r2_x, r1_y, ball_yf, ball_zf)
         paddle_hit_vel, paddle_hit_rot = get_desired_paddle_velocity(ball_vel_final, ball_vel_desired, paddle_mass, ball_mass, restitution)
-        p, R = robot2.kin.fkin(theta2)
-        print("p:\n", p)
-        # x0, y0, z0 = p0.flatten
+        ball_posf = np.array([[r2_x], [ball_yf], [ball_zf]])
 
-        ball_posf = np.array([[ball_xf], [ball_yf], [intercept_height]])
         t_windup = tf_ball * windup_ratio
         t_hit = tf_ball * (1 - windup_ratio)
         windup_pos = ball_posf - pullback_ratio * paddle_hit_vel
-        print("ball posf:\n", ball_posf)
-        print("windup pos:\n", windup_pos)
-        print("tf ball:\n", tf_ball)
 
         #Constant distance windup
         #windup_pos = ball_posf - 0.15 * paddle_hit_vel / np.linalg.norm(paddle_hit_vel)
 
         # Use the current paddle velocity as initial velocity to ensure smooth
         # trajectory
+        p, R = robot2.kin.fkin(theta2)
         paddle_vel = get_paddle_velocity(robot2.name)
-        print("get paddle vel:\n", paddle_vel)
-        print("paddle hit vel:\n", paddle_hit_vel)
         spline_x = compute_spline(t_windup, np.array([p[0], [paddle_vel[0]], windup_pos[0], paddle_hit_vel[0]]))
         spline_y = compute_spline(t_windup, np.array([p[1], [paddle_vel[1]], windup_pos[1], paddle_hit_vel[1]]))
         spline_z = compute_spline(t_windup, np.array([p[2], [paddle_vel[2]], windup_pos[2], paddle_hit_vel[2]]))
-        print("mid x spline pos: ", call_spline_pos(spline_x, t_windup/2))
-        print("mid y spline pos: ", call_spline_pos(spline_y, t_windup/2))
-        print("mid z spline pos: ", call_spline_pos(spline_z, t_windup/2))
         
         # Compute rotation matrix trajectory
         intermediate_quats, target_quat = robot2.compute_intermediate_quaternions(theta2, paddle_hit_rot, tf_ball)

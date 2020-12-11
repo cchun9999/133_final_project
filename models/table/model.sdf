@@ -7,7 +7,7 @@
         <pose>0 0 .5 0 0 0</pose>
         <geometry>
           <box>
-            <size>2.5 2.0 0.03</size>
+            <size>3.0 2.0 0.03</size>
           </box>
         </geometry>
         <surface>
@@ -27,7 +27,7 @@
         <pose>0 0 .5 0 0 0</pose>
         <geometry>
           <box>
-            <size>2.5 2.0 0.03</size>
+            <size>3.0 2.0 0.03</size>
           </box>
         </geometry>
         <material>
@@ -38,18 +38,18 @@
         </material>
       </visual>
       <collision name="net">
-        <pose>0 0 .6 0 0 0</pose>
+        <pose>0 0 .55 0 0 0</pose>
         <geometry>
           <box>
-            <size>.05 2.0 .2</size>
+            <size>.05 1.0 .2</size>
           </box>
         </geometry>
       </collision>
       <visual name="net">
-        <pose>0 0 .6 0 0 0</pose>
+        <pose>0 0 .55 0 0 0</pose>
         <geometry>
           <box>
-            <size>.05 2.0 .2</size>
+            <size>.05 2.0 .1</size>
           </box>
         </geometry>
         <material>
